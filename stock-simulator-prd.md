@@ -3243,7 +3243,1384 @@ StockPilot Version 1 is **complete** when:
 
 ---
 
+---
+
+# 38. Fractional Share Rounding Rules
+
+## 38.1 Precision Standard
+
+All share quantities are stored and calculated to **6 decimal places** (e.g. `2.500000`). This precision is sufficient for fractional shares of even the highest-priced stocks while avoiding floating-point drift over many operations.
+
+All currency values (prices, balances, fees, totals) are stored and calculated to **2 decimal places**, rounded using standard half-up rounding (e.g. `$1.255` rounds to `$1.26`).
+
+## 38.2 Buy Order Rounding
+
+When a user enters a fractional quantity to buy:
+
+| Step | Rule |
+|---|---|
+| Quantity input | Accepted to 6 decimal places. Values beyond 6 decimals are truncated at input |
+| Price used | Most recent WebSocket price, to 2 decimal places |
+| Subtotal | `shares × price`, rounded to 2 decimal places |
+| Fee | `subtotal × 0.005`, rounded up to nearest cent (always favours the house) |
+| Total cost | `subtotal + fee`, rounded to 2 decimal places |
+| Balance deduction | Exact total cost deducted — no additional rounding |
+
+**Example:**
+- Buy 1.5 shares of AAPL at PC$189.52
+- Subtotal: `1.5 × 189.52 = 284.28`
+- Fee: `284.28 × 0.005 = 1.4214 → rounds up to 1.43`
+- Total: `284.28 + 1.43 = 285.71`
+- Balance decreases by exactly PC$285.71
+
+## 38.3 Sell Order Rounding
+
+| Step | Rule |
+|---|---|
+| Quantity input | Cannot exceed owned shares to 6 decimal places. Input truncated to 6 decimal places |
+| Proceeds | `shares × price`, rounded to 2 decimal places |
+| Fee | `proceeds × 0.005`, rounded up to nearest cent |
+| Net proceeds | `proceeds − fee`, rounded to 2 decimal places |
+| Balance addition | Exact net proceeds added |
+
+## 38.4 Weighted Average Cost Rounding
+
+After a new buy order, the new WAVG is calculated as:
+
+```
+new_avg = ((existing_shares × existing_avg) + (new_shares × new_price))
+          ÷ (existing_shares + new_shares)
+```
+
+Result is stored to **6 decimal places**. This prevents rounding errors from accumulating across many purchases.
+
+## 38.5 Gain/Loss Display Rounding
+
+| Value | Display Format |
+|---|---|
+| Dollar gain/loss | Rounded to 2 decimal places, shown with sign: `+PC$234.50` or `-PC$12.30` |
+| Percentage gain/loss | Rounded to 2 decimal places: `+12.34%` or `-3.21%` |
+| Portfolio total value | Rounded to 2 decimal places |
+| Price per share | Shown to 2 decimal places |
+
+## 38.6 Minimum Trade Value
+
+There is no minimum trade value enforced in code. However, the 0.5% fee means very small trades are economically inefficient — a user buying PC$1.00 worth of a stock pays PC$0.01 in fees (1%). This is intentional: it teaches that frequent small trades are costly.
+
+---
+
+# 39. Leaderboard Tie-Breaking Rules
+
+## 39.1 Primary Sort
+
+The leaderboard is sorted **descending by total portfolio value** (cash + market value of all holdings).
+
+When the display shows "% gain", that column is calculated and shown alongside total value but is **not** used as the primary sort key. Rank is determined by total portfolio value only.
+
+## 39.2 Tie-Breaking Hierarchy
+
+When two or more students have identical total portfolio values (to 2 decimal places), the following rules apply in order:
+
+| Priority | Tiebreaker | Rationale |
+|---|---|---|
+| 1 | Higher % gain | Same value but started with less → proportionally better performance |
+| 2 | Fewer total trades | Achieved the same result with less activity → more efficient strategy |
+| 3 | Earlier join time (`joined_at`) | Earlier participant is ranked higher as a tiebreak of last resort |
+
+## 39.3 Display of Tied Ranks
+
+When two students are genuinely tied after all tiebreakers (extremely unlikely):
+
+- Both are shown at the same rank number (e.g. both show `#4`)
+- The next student is shown at rank `#6` (not `#5`), preserving ordinal integrity
+- A small "=" symbol appears next to both tied rows
+
+## 39.4 Real-Time Rank Changes
+
+Rank changes are calculated on every leaderboard re-render. The previous rank (before the last price tick) is stored in component state. On re-render:
+
+- If new rank < previous rank → show `▲ N` in green (moved up N positions)
+- If new rank > previous rank → show `▼ N` in red (moved down N positions)
+- If rank unchanged → no indicator shown
+
+Rank change indicators reset to blank every 30 seconds to avoid cluttering the UI with stale indicators.
+
+---
+
+# 40. Component Specifications
+
+## 40.1 Navbar
+
+**File:** `src/components/Navbar.js`
+
+**Props:** None (reads from `userState` and `simulationState` directly)
+
+**States:**
+- `scrolled` (boolean) — true when page is scrolled > 20px, adds backdrop blur and border-bottom
+
+**DOM Structure:**
+```html
+<nav class="fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-6
+            bg-[#0D0F14]/80 border-b border-[#2A3245]/0
+            transition-all duration-200
+            [&.scrolled]:backdrop-blur-md [&.scrolled]:border-[#2A3245]">
+
+  <!-- Logo -->
+  <a href="/" class="font-orbitron font-bold text-xl text-white mr-8">
+    ✈ StockPilot
+  </a>
+
+  <!-- Nav Links -->
+  <div class="flex items-center gap-1 flex-1">
+    <a href="/" class="nav-link">Dashboard</a>
+    <a href="/stocks" class="nav-link">Stocks</a>
+    <a href="/portfolio" class="nav-link">Portfolio</a>
+    <a href="/leaderboard" class="nav-link">Leaderboard</a>
+    <a href="/achievements" class="nav-link">Achievements</a>
+  </div>
+
+  <!-- Right Side -->
+  <div class="flex items-center gap-3">
+    <!-- Market Status -->
+    <span class="market-status-pill">🟢 Market Open</span>
+
+    <!-- Audio Mute Toggle -->
+    <button class="icon-btn" id="audio-toggle">🔊</button>
+
+    <!-- Notification Bell -->
+    <button class="icon-btn relative" id="notif-bell">
+      🔔
+      <span class="notif-badge">3</span>
+    </button>
+
+    <!-- User Dropdown Trigger -->
+    <button class="flex items-center gap-2 user-dropdown-trigger">
+      <div class="avatar">M</div>
+      <span class="text-sm text-slate-300">Maya</span>
+      <span class="text-slate-500">▾</span>
+    </button>
+  </div>
+</nav>
+```
+
+**CSS Classes (custom):**
+```css
+.nav-link {
+  @apply px-3 py-2 rounded-lg text-sm font-medium text-slate-400
+         hover:text-white hover:bg-white/5 transition-colors duration-150;
+}
+.nav-link.active {
+  @apply text-white bg-white/10;
+}
+.market-status-pill {
+  @apply px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400
+         border border-green-500/20;
+}
+.icon-btn {
+  @apply p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5
+         transition-colors duration-150;
+}
+.notif-badge {
+  @apply absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500
+         text-white text-[10px] font-bold flex items-center justify-center;
+}
+.avatar {
+  @apply w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600
+         flex items-center justify-center text-white text-sm font-bold;
+}
+```
+
+---
+
+## 40.2 StockCard (Card View)
+
+**File:** `src/components/StockCard.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `symbol` | string | Ticker symbol (e.g. `'AAPL'`) |
+| `name` | string | Company name |
+| `price` | number | Current price |
+| `change` | number | Dollar change today |
+| `changePct` | number | Percentage change today |
+| `logoUrl` | string | URL of company logo image |
+| `onClick` | function | Called when card is clicked |
+
+**States:**
+- `flashClass` — `'flash-green'` | `'flash-red'` | `''` — set for 600ms on each price update
+
+**DOM Structure:**
+```html
+<div class="stock-card [flashClass]" onclick="props.onClick()">
+  <div class="flex items-center gap-3 mb-3">
+    <img src="{logoUrl}" class="w-8 h-8 rounded-md object-contain bg-white/5 p-0.5" />
+    <div>
+      <div class="text-white font-semibold text-sm">{symbol}</div>
+      <div class="text-slate-500 text-xs truncate max-w-[120px]">{name}</div>
+    </div>
+  </div>
+  <div class="text-white font-bold text-lg tabular-nums">PC${price}</div>
+  <div class="change-badge [gain|loss]">
+    {change >= 0 ? '▲' : '▼'} {changePct}%
+  </div>
+</div>
+```
+
+**CSS Classes:**
+```css
+.stock-card {
+  @apply bg-[#161B26] border border-[#2A3245] rounded-xl p-4 cursor-pointer
+         hover:border-blue-500/40 hover:bg-[#1a2030] transition-all duration-150;
+}
+.flash-green { animation: flash-green 600ms ease-out; }
+.flash-red   { animation: flash-red 600ms ease-out; }
+.change-badge {
+  @apply mt-1 inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full;
+}
+.change-badge.gain { @apply bg-green-500/15 text-green-400; }
+.change-badge.loss { @apply bg-red-500/15 text-red-400; }
+
+@keyframes flash-green {
+  0%   { background-color: rgba(34,197,94,0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0%   { background-color: rgba(239,68,68,0.25); }
+  100% { background-color: transparent; }
+}
+```
+
+---
+
+## 40.3 StockRow (Table View)
+
+**File:** `src/components/StockRow.js`
+
+**Props:** Same as `StockCard` plus `rank` (optional number for ranked lists)
+
+**DOM Structure:**
+```html
+<tr class="stock-row" onclick="props.onClick()">
+  <td class="pl-4 py-3">
+    <div class="flex items-center gap-3">
+      <img src="{logoUrl}" class="w-6 h-6 rounded object-contain" />
+      <span class="font-semibold text-white text-sm">{symbol}</span>
+      <span class="text-slate-500 text-xs hidden lg:block">{name}</span>
+    </div>
+  </td>
+  <td class="text-right pr-4 font-semibold tabular-nums text-white">PC${price}</td>
+  <td class="text-right pr-4">
+    <span class="change-badge [gain|loss]">{change >= 0 ? '▲' : '▼'} {changePct}%</span>
+  </td>
+</tr>
+```
+
+**CSS:**
+```css
+.stock-row {
+  @apply border-b border-[#2A3245] cursor-pointer
+         hover:bg-white/[0.03] transition-colors duration-100;
+}
+```
+
+---
+
+## 40.4 TradePanel
+
+**File:** `src/components/TradePanel.js`
+
+The most complex component in the app. Handles all three order types with live cost calculation.
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `symbol` | string | Ticker being traded |
+| `currentPrice` | number | Live current price |
+| `ownedShares` | number | Shares the user currently owns (0 if none) |
+| `cashBalance` | number | User's available cash |
+| `onTradeComplete` | function | Callback after successful trade |
+
+**States:**
+| State | Type | Default | Description |
+|---|---|---|---|
+| `side` | `'buy'`\|`'sell'` | `'buy'` | Which tab is active |
+| `orderType` | `'market'`\|`'limit'`\|`'stop_loss'` | `'market'` | Selected order type |
+| `quantity` | string | `''` | Raw input value |
+| `limitPrice` | string | `''` | Limit/stop price input value |
+| `isSubmitting` | boolean | `false` | True while trade is being processed |
+| `error` | string\|null | `null` | Inline error message |
+| `warning` | string\|null | `null` | Non-blocking warning message |
+
+**Computed Values (derived from state):**
+- `quantityNum` — `parseFloat(quantity) || 0`
+- `priceUsed` — `orderType === 'market' ? currentPrice : parseFloat(limitPrice) || 0`
+- `subtotal` — `quantityNum × priceUsed`
+- `fee` — `Math.ceil(subtotal × 0.005 × 100) / 100`
+- `total` — `subtotal + fee` (buy) or `subtotal − fee` (sell)
+- `canAfford` — `total <= cashBalance` (buy only)
+- `hasEnoughShares` — `quantityNum <= ownedShares` (sell only)
+- `showConfirmDialog` — `total > 1000`
+
+**DOM Structure:**
+```html
+<div class="trade-panel">
+  <!-- Side Toggle -->
+  <div class="flex rounded-lg overflow-hidden mb-4 border border-[#2A3245]">
+    <button class="trade-tab [active if side=buy]"  onclick="setSide('buy')">Buy</button>
+    <button class="trade-tab [active if side=sell]" onclick="setSide('sell')">Sell</button>
+  </div>
+
+  <!-- Order Type -->
+  <div class="mb-4">
+    <label class="field-label">Order Type</label>
+    <div class="flex gap-2">
+      <button class="order-type-btn [active]" onclick="setOrderType('market')">Market</button>
+      <button class="order-type-btn"          onclick="setOrderType('limit')">Limit</button>
+      <button class="order-type-btn"          onclick="setOrderType('stop_loss')">Stop-Loss</button>
+    </div>
+  </div>
+
+  <!-- Quantity Input -->
+  <div class="mb-3">
+    <label class="field-label">Quantity (shares)</label>
+    <input type="number" min="0" step="0.000001"
+           class="trade-input" placeholder="0.00"
+           value="{quantity}" oninput="setQuantity(e.target.value)" />
+  </div>
+
+  <!-- Limit/Stop Price Input (conditionally shown) -->
+  {if orderType !== 'market'}
+  <div class="mb-3">
+    <label class="field-label">{orderType === 'limit' ? 'Limit Price' : 'Stop Price'} (PC$)</label>
+    <input type="number" min="0" step="0.01"
+           class="trade-input" placeholder="0.00"
+           value="{limitPrice}" oninput="setLimitPrice(e.target.value)" />
+  </div>
+  {/if}
+
+  <!-- Cost Breakdown -->
+  <div class="cost-breakdown">
+    <div class="cost-row"><span>Subtotal</span><span>PC${subtotal}</span></div>
+    <div class="cost-row text-slate-500"><span>Fee (0.5%)</span><span>PC${fee}</span></div>
+    <div class="cost-row font-bold border-t border-[#2A3245] pt-2 mt-2">
+      <span>{side === 'buy' ? 'Total Cost' : 'Net Proceeds'}</span>
+      <span class="{canAfford || side==='sell' ? 'text-white' : 'text-red-400'}">PC${total}</span>
+    </div>
+    <div class="cost-row text-slate-500 text-xs">
+      <span>Balance after</span>
+      <span>{side === 'buy' ? cashBalance - total : cashBalance + total}</span>
+    </div>
+  </div>
+
+  <!-- Warning / Error -->
+  {if warning} <div class="inline-warning">{warning}</div> {/if}
+  {if error}   <div class="inline-error">{error}</div>   {/if}
+
+  <!-- Submit Button -->
+  <button class="submit-btn [buy|sell] [disabled if !valid or isSubmitting]"
+          onclick="handleSubmit()">
+    {isSubmitting ? 'Processing...' : (side === 'buy' ? 'Buy' : 'Sell')}
+  </button>
+</div>
+```
+
+**CSS:**
+```css
+.trade-panel    { @apply bg-[#161B26] border border-[#2A3245] rounded-xl p-5; }
+.trade-tab      { @apply flex-1 py-2 text-sm font-semibold text-slate-400
+                         transition-colors duration-150; }
+.trade-tab.active.buy  { @apply bg-green-500/20 text-green-400; }
+.trade-tab.active.sell { @apply bg-red-500/20 text-red-400; }
+.order-type-btn { @apply px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400
+                         border border-[#2A3245] hover:border-blue-500/50
+                         transition-all duration-150; }
+.order-type-btn.active { @apply border-blue-500 text-blue-400 bg-blue-500/10; }
+.field-label    { @apply block text-xs font-semibold text-slate-500 uppercase
+                         tracking-wider mb-1.5; }
+.trade-input    { @apply w-full bg-[#1E2535] border border-[#2A3245] rounded-lg
+                         px-3 py-2.5 text-white text-sm tabular-nums
+                         focus:outline-none focus:border-blue-500
+                         transition-colors duration-150; }
+.cost-breakdown { @apply bg-[#0D0F14] rounded-lg p-3 mb-4 space-y-1; }
+.cost-row       { @apply flex justify-between text-sm; }
+.inline-warning { @apply text-amber-400 text-xs mb-3 flex items-center gap-1; }
+.inline-error   { @apply text-red-400 text-xs mb-3 flex items-center gap-1; }
+.submit-btn     { @apply w-full py-3 rounded-xl font-bold text-white
+                         transition-all duration-150 active:scale-[0.97]; }
+.submit-btn.buy  { @apply bg-green-500 hover:bg-green-400 disabled:bg-green-500/30; }
+.submit-btn.sell { @apply bg-red-500 hover:bg-red-400 disabled:bg-red-500/30; }
+```
+
+---
+
+## 40.5 PriceChart
+
+**File:** `src/components/PriceChart.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `symbol` | string | Ticker symbol |
+| `timeframe` | `'1D'`\|`'1W'`\|`'1M'` | Active timeframe |
+| `onTimeframeChange` | function | Called with new timeframe when user switches |
+
+**States:**
+- `chartData` — array of `{ t: timestamp, c: closePrice }` from Finnhub candles
+- `isLoading` — boolean
+- `error` — string | null
+
+**Behaviour:**
+- On mount and on `timeframe` change: fetch candle data from Finnhub proxy
+- If data fetched successfully: render Chart.js line chart
+- If fetch fails: show error state with last known data if available
+- Chart colour is green if `chartData[last].c >= chartData[0].c`, else red
+- Gradient fill uses the same colour at 20% opacity fading to transparent
+
+**Chart.js Config:**
+```js
+{
+  type: 'line',
+  data: {
+    labels: chartData.map(d => formatLabel(d.t, timeframe)),
+    datasets: [{
+      data: chartData.map(d => d.c),
+      borderColor: isUp ? '#22C55E' : '#EF4444',
+      borderWidth: 2,
+      fill: true,
+      backgroundColor: gradient,  // canvas gradient
+      pointRadius: 0,
+      tension: 0.3,
+    }]
+  },
+  options: {
+    animation: { duration: 400 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: { label: v => `PC$${v.parsed.y.toFixed(2)}` }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#475569', maxTicksLimit: 6 } },
+      y: { grid: { color: '#1E2535' }, ticks: { color: '#475569',
+               callback: v => `PC$${v}` } }
+    }
+  }
+}
+```
+
+---
+
+## 40.6 Toast
+
+**File:** `src/components/Toast.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'success'`\|`'error'`\|`'warning'`\|`'achievement'` | Visual variant |
+| `message` | string | Primary message line |
+| `subtext` | string (optional) | Secondary line (e.g. XP earned) |
+| `duration` | number | Milliseconds before auto-dismiss (default 4000) |
+| `onDismiss` | function | Called when toast is dismissed |
+
+**DOM Structure:**
+```html
+<div class="toast toast-{type}" role="alert">
+  <div class="toast-icon">{icon by type}</div>
+  <div class="toast-content">
+    <div class="toast-message">{message}</div>
+    {if subtext} <div class="toast-subtext">{subtext}</div> {/if}
+  </div>
+  <button class="toast-close" onclick="onDismiss()">✕</button>
+</div>
+```
+
+**CSS:**
+```css
+.toast {
+  @apply flex items-start gap-3 p-4 rounded-xl shadow-2xl
+         border bg-[#161B26] min-w-[280px] max-w-[360px]
+         animate-slide-in-right;
+}
+.toast-success     { @apply border-green-500/40; }
+.toast-error       { @apply border-red-500/40; }
+.toast-warning     { @apply border-amber-500/40; }
+.toast-achievement { @apply border-yellow-400/40 bg-gradient-to-r from-[#161B26] to-yellow-950/30; }
+.toast-message  { @apply text-sm font-semibold text-white; }
+.toast-subtext  { @apply text-xs text-slate-400 mt-0.5; }
+.toast-close    { @apply ml-auto text-slate-500 hover:text-white text-xs p-1; }
+
+@keyframes slide-in-right {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+```
+
+---
+
+## 40.7 LevelUpCard
+
+**File:** `src/components/LevelUpCard.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `newLevel` | number | The level just reached |
+| `title` | string | New level title |
+| `cosmeticReward` | string | Description of cosmetic unlocked |
+| `xpTotal` | number | User's new total XP |
+| `xpThreshold` | number | XP required for the next level |
+| `onDismiss` | function | Called when user clicks "Keep Trading" |
+
+**DOM Structure:**
+```html
+<div class="level-up-overlay" onclick="onDismiss()">
+  <div class="level-up-card" onclick="stopPropagation">
+    <div class="level-up-stars">★ LEVEL UP! ★</div>
+    <div class="level-number">LEVEL {newLevel}</div>
+    <div class="level-title">{title}</div>
+    <div class="xp-bar-container">
+      <div class="xp-bar-fill" style="width: 0%" data-target="{fillPct}%"></div>
+    </div>
+    <div class="xp-label">{xpTotal.toLocaleString()} XP</div>
+    <div class="cosmetic-reward">🎨 {cosmeticReward}</div>
+    <button class="dismiss-btn" onclick="onDismiss()">Keep Trading</button>
+  </div>
+</div>
+```
+
+The XP bar animates from 0% to the current fill percentage over 800ms on mount (ease-out).
+
+---
+
+# 42. Animation Specification
+
+Every animation in StockPilot is defined here with exact duration, easing, and trigger condition. No animation should be added that isn't in this list.
+
+## 42.1 Page Transitions
+
+| Transition | Trigger | Duration | Easing | CSS |
+|---|---|---|---|---|
+| Page fade-in | Route change (new page mounts) | 200ms | `ease-out` | `opacity: 0 → 1` |
+| Page fade-out | Route change (old page unmounts) | 150ms | `ease-in` | `opacity: 1 → 0` |
+
+Implementation: Before routing, apply fade-out to `#app-content`, swap content, then apply fade-in.
+
+## 42.2 Price Flash Animations
+
+| Flash | Trigger | Duration | Easing | Keyframes |
+|---|---|---|---|---|
+| Green flash | Price increases (new > previous) | 600ms | `ease-out` | Background `rgba(34,197,94,0.25)` → `transparent` |
+| Red flash | Price decreases (new < previous) | 600ms | `ease-out` | Background `rgba(239,68,68,0.25)` → `transparent` |
+
+Applies to: individual `StockCard`, `StockRow`, price display in `TradePanel`, portfolio row prices.
+
+## 42.3 Toast Notifications
+
+| Phase | Duration | Easing | CSS |
+|---|---|---|---|
+| Slide in | 300ms | `cubic-bezier(0.34, 1.56, 0.64, 1)` (spring) | `translateX(110%) → translateX(0)` + `opacity 0 → 1` |
+| Visible | User-defined duration (4000–6000ms) | — | Static |
+| Fade out | 300ms | `ease-in` | `opacity 1 → 0` + `translateX(0) → translateX(110%)` |
+
+## 42.4 Level-Up Card
+
+| Phase | Duration | Easing | CSS |
+|---|---|---|---|
+| Backdrop fade in | 300ms | `ease-out` | `opacity: 0 → 1`, `backdrop-blur: 0 → 8px` |
+| Card scale in | 400ms | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `scale(0.8) → scale(1)` + `opacity 0 → 1` |
+| Stars pulse | 1200ms | `ease-in-out`, repeating | `scale(1) → scale(1.1) → scale(1)` |
+| XP bar fill | 800ms | `ease-out` | `width: 0% → target%` (delayed 400ms after card appears) |
+| Dismiss (card) | 200ms | `ease-in` | `scale(1) → scale(0.9)` + `opacity 1 → 0` |
+| Dismiss (backdrop) | 200ms | `ease-in` | `opacity 1 → 0` |
+
+## 42.5 Achievement Toast (Badge Unlock)
+
+| Phase | Duration | Easing | CSS |
+|---|---|---|---|
+| Badge icon bounce | 400ms | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `scale(0) → scale(1)` |
+| +XP float | 600ms | `ease-out` | Small `+10 XP` text floats up 20px and fades out near the action button |
+
+## 42.6 Leaderboard Re-rank
+
+| Element | Duration | Easing | CSS |
+|---|---|---|---|
+| Row position change | 500ms | `ease-in-out` | `translateY()` transition using FLIP animation technique |
+| Rank change indicator (▲▼) | 300ms fade-in | `ease-out` | `opacity 0 → 1` |
+| Value number update | 200ms | `ease-out` | Number fades: `opacity 0.5 → 1` |
+
+## 42.7 End-of-Simulation Sequence
+
+| Phase | Start Time | Duration | Element | Animation |
+|---|---|---|---|---|
+| Countdown 3 | 0ms | 800ms | "3" | Scales up from `scale(0.5)`, fades out |
+| Countdown 2 | 900ms | 800ms | "2" | Same |
+| Countdown 1 | 1800ms | 800ms | "1" | Same |
+| 3rd place slide-in | 2700ms | 600ms | 3rd place card | Slides from left (`translateX(-100%) → 0`) |
+| 2nd place slide-in | 3400ms | 600ms | 2nd place card | Slides from right (`translateX(100%) → 0`) |
+| 1st place drop | 4200ms | 800ms | 1st place card | Drops from top (`translateY(-100%) → 0`) with bounce |
+| Confetti burst | 4200ms | 3000ms | Canvas confetti | Full-screen particle burst |
+| Leaderboard table | 5500ms | 400ms | Full table | Fade in from below |
+| Personal card | 6200ms | 400ms | Summary card | Fade + scale in |
+
+## 42.8 XP Bar (Navbar / Dashboard)
+
+| Trigger | Duration | Easing | Behaviour |
+|---|---|---|---|
+| XP earned (small amount) | 600ms | `ease-out` | Bar width transitions to new fill percentage |
+| XP earned (level threshold crossed) | Bar fills to 100% over 600ms, then level-up card fires, then bar resets to new fill % over 400ms | `ease-out` | See §42.4 for level-up card timing |
+
+## 42.9 Chart Animations
+
+| Chart | On Load | On Data Update | Duration |
+|---|---|---|---|
+| Stock price line chart | Lines draw from left to right | Re-render with new dataset | 400ms |
+| Net worth line chart | Same left-to-right draw | Append new data point and scroll | 400ms |
+| Portfolio pie chart | Slices expand from centre | Resize slices proportionally | 400ms |
+| Gain/loss bar chart | Bars grow from zero | Resize bars | 400ms |
+
+All Chart.js animations use `animation: { duration: 400, easing: 'easeOutQuart' }`.
+
+## 42.10 Miscellaneous
+
+| Element | Trigger | Duration | CSS |
+|---|---|---|---|
+| Market event banner slide-in | Event fires | 400ms `ease-out` | `translateY(-100%) → translateY(0)` |
+| Market event banner slide-out | Dismissed | 300ms `ease-in` | Reverses |
+| Card hover glow | Mouse enter | 150ms | Border colour transitions to `blue-500/40` |
+| Button press | Mouse down | 100ms | `scale(1) → scale(0.97)` |
+| Button release | Mouse up | 100ms | `scale(0.97) → scale(1)` |
+| Modal backdrop | Modal opens | 200ms | `opacity 0 → 1`, `backdrop-blur 0 → 4px` |
+| Notification bell badge | New notification | 300ms | Badge pops in with `scale(0) → scale(1)` spring |
+
+---
+
+# 41. Additional Wireframes
+
+## 41.1 Profile Page (`/profile`)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  | Dashboard  Stocks  Portfolio  Leaderboard  Badges │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  [M]  Maya Chen                  Portfolio Builder — Lv. 7  │   │
+│  │       Period 3 Spring Simulation                            │   │
+│  │                                                             │   │
+│  │  XP:  ████████████████░░░░  1,443 / 2,048  (to Level 8)    │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │
+│  │ TOTAL GAIN  │  │ TOTAL TRADES│  │ BADGES      │  │ RANK     │  │
+│  │ +28.47%     │  │    19       │  │  12 / 29    │  │  #3 / 28 │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └──────────┘  │
+│                                                                     │
+│  RECENT BADGES                                                      │
+│  ──────────────────────────────────────────────────────────────    │
+│  🏅 First Trade       🏅 In the Green      🏅 Up 5%               │
+│                                              [View all badges →]   │
+│                                                                     │
+│  RECENT TRANSACTIONS                                                │
+│  ──────────────────────────────────────────────────────────────    │
+│  ▲ Bought 5 AAPL  PC$947.60   Today 10:14am                        │
+│  ▼ Sold   3 TSLA  PC$639.00   Today 9:52am                         │
+│  ▲ Bought 2 NVDA  PC$175.40   Yesterday 3:31pm                     │
+│                                          [View full history →]     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## 41.2 Transaction History (`/history`)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  | ← Back                                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TRANSACTION HISTORY                                                │
+│  Period 3 Spring Simulation                                         │
+│                                                                     │
+│  Sort by: [Date ▾]  [Trade Value ▾]                                 │
+│                                                                     │
+│  Date/Time       Type  Symbol  Shares  Price     Fee    Total       │
+│  ─────────────  ─────  ──────  ──────  ────────  ─────  ─────────  │
+│  Today 10:14am  BUY    AAPL    5.00    PC$189.52 PC$4.74 PC$952.34 │
+│  Today 9:52am   SELL   TSLA    3.00    PC$213.00 PC$3.20 PC$635.80 │
+│                                                        Gain: +PC$21 │
+│  Yest. 3:31pm   BUY    NVDA    2.00    PC$877.20 PC$8.77 PC$763.17 │
+│  Yest. 9:05am   BUY    TSLA    3.00    PC$221.10 PC$3.32 PC$666.62 │
+│  ─────────────  ─────  ──────  ──────  ────────  ─────  ─────────  │
+│                                                                     │
+│  19 trades total  |  PC$38.42 total fees paid                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## 41.3 Admin Panel — Analytics Tab
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  ADMIN  | [Sessions] [Students] [Analytics] [Events] │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ANALYTICS — Period 3 Spring Simulation                             │
+│                                        [📥 Export CSV]             │
+│                                                                     │
+│  ┌──────────────────────────────────┐  ┌────────────────────────┐  │
+│  │  PORTFOLIO VALUE DISTRIBUTION    │  │  TRADE VOLUME / DAY    │  │
+│  │                                  │  │                        │  │
+│  │  ████  5 students  $12k–$15k     │  │  40 ┤  ██             │  │
+│  │  ████  8 students  $10k–$12k     │  │  20 ┤ ████ ██         │  │
+│  │  ████  9 students  $8k–$10k      │  │   0 └────────────────  │  │
+│  │  ████  6 students  <$8k          │  │     Day1  Day5  Day10  │  │
+│  └──────────────────────────────────┘  └────────────────────────┘  │
+│                                                                     │
+│  MOST TRADED STOCKS                                                 │
+│  AAPL ████████████████████ 47 trades                               │
+│  TSLA ████████████░░░░░░░░ 31 trades                               │
+│  NVDA ████████░░░░░░░░░░░░ 22 trades                               │
+│                                                                     │
+│  STUDENT ENGAGEMENT TABLE                                           │
+│  Name       │ Logins │ Trades │ Last Active │ XP    │ Resets Used  │
+│  ────────── ┼ ────── ┼ ────── ┼ ─────────── ┼ ───── ┼ ──────────  │
+│  Jordan K.  │   12   │   23   │  2 min ago  │ 2,100 │    No       │
+│  Alex P.    │    9   │   17   │  5 min ago  │ 1,650 │    No       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## 41.4 Tutorial — Step 3 (Place a Buy Order)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  TUTORIAL MODE  (Practice Portfolio)   Step 3 of 5   │
+├────────────────────────────────────────┬────────────────────────────┤
+│                                        │ ╔══════════════════════╗   │
+│  🍎 AAPL  Apple Inc.      TECH         │ ║  STEP 3 OF 5         ║   │
+│  PC$189.52  +1.25%  ▲                  │ ║  Place a Buy Order   ║   │
+│                                        │ ║                      ║   │
+│  [Price chart]                         │ ║  Buy 2 shares of     ║   │
+│                                        │ ║  Apple using your    ║   │
+│                                        │ ║  practice balance.   ║   │
+│                                        │ ╚══════════════════════╝   │
+│                                        │                            │
+│                                        │  ↓ Trade panel below       │
+│                                        │  ┌──────────────────────┐  │
+│                                        │  │ [Buy] | Sell         │  │
+│                                        │  │ Quantity: [2_______] │  │
+│                                        │  │ Total: PC$380.94     │  │
+│                                        │  │ [  Confirm Buy  ]  ← highlight │
+│                                        │  └──────────────────────┘  │
+└────────────────────────────────────────┴────────────────────────────┘
+```
+
+---
+
+# 43. Supabase RLS Policies (SQL)
+
+Every table in Supabase has Row Level Security enabled. Below are the exact policies for each table.
+
+## 43.1 `users`
+
+```sql
+-- Users can read their own row
+CREATE POLICY "users_select_own"
+ON users FOR SELECT
+USING (auth.uid() = id);
+
+-- Users can update their own row (display_name, last_login only)
+CREATE POLICY "users_update_own"
+ON users FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+```
+
+## 43.2 `sessions`
+
+```sql
+-- Any authenticated user can read sessions
+CREATE POLICY "sessions_select_authenticated"
+ON sessions FOR SELECT
+USING (auth.role() = 'authenticated');
+
+-- Only teachers can create sessions
+CREATE POLICY "sessions_insert_teacher"
+ON sessions FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'teacher'
+  )
+);
+
+-- Only the session's teacher can update it
+CREATE POLICY "sessions_update_own_teacher"
+ON sessions FOR UPDATE
+USING (teacher_id = auth.uid());
+```
+
+## 43.3 `session_members`
+
+```sql
+-- Users can read their own membership row
+CREATE POLICY "session_members_select_own"
+ON session_members FOR SELECT
+USING (user_id = auth.uid());
+
+-- Teachers can read all members of their sessions
+CREATE POLICY "session_members_select_teacher"
+ON session_members FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM sessions
+    WHERE sessions.id = session_members.session_id
+    AND sessions.teacher_id = auth.uid()
+  )
+);
+
+-- Users can update their own row; teachers can update any row in their session
+CREATE POLICY "session_members_update_own"
+ON session_members FOR UPDATE
+USING (user_id = auth.uid());
+
+CREATE POLICY "session_members_update_teacher"
+ON session_members FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1 FROM sessions
+    WHERE sessions.id = session_members.session_id
+    AND sessions.teacher_id = auth.uid()
+  )
+);
+
+-- Users can insert their own membership
+CREATE POLICY "session_members_insert_own"
+ON session_members FOR INSERT
+WITH CHECK (user_id = auth.uid());
+```
+
+## 43.4 `holdings`
+
+```sql
+-- Helper: checks the session_member belongs to the requesting user
+CREATE POLICY "holdings_all_own"
+ON holdings FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM session_members sm
+    WHERE sm.id = holdings.session_member_id
+    AND sm.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM session_members sm
+    WHERE sm.id = holdings.session_member_id
+    AND sm.user_id = auth.uid()
+  )
+);
+```
+
+## 43.5 `transactions`
+
+```sql
+-- Users read their own; teachers read all in their session
+CREATE POLICY "transactions_select_own"
+ON transactions FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM session_members sm
+    WHERE sm.id = transactions.session_member_id
+    AND sm.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "transactions_select_teacher"
+ON transactions FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM session_members sm
+    JOIN sessions s ON s.id = sm.session_id
+    WHERE sm.id = transactions.session_member_id
+    AND s.teacher_id = auth.uid()
+  )
+);
+
+-- Insert only (no update or delete on transaction history)
+CREATE POLICY "transactions_insert_own"
+ON transactions FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM session_members sm
+    WHERE sm.id = transactions.session_member_id
+    AND sm.user_id = auth.uid()
+  )
+);
+```
+
+## 43.6 `orders`, `user_achievements`, `price_alerts`
+
+```sql
+-- Orders: users fully manage their own
+CREATE POLICY "orders_all_own" ON orders FOR ALL
+USING (EXISTS (SELECT 1 FROM session_members sm WHERE sm.id = orders.session_member_id AND sm.user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM session_members sm WHERE sm.id = orders.session_member_id AND sm.user_id = auth.uid()));
+
+-- Achievements: select + insert own only (no update/delete)
+CREATE POLICY "achievements_select_own" ON user_achievements FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "achievements_insert_own" ON user_achievements FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- Price alerts: full CRUD own only
+CREATE POLICY "price_alerts_all_own" ON price_alerts FOR ALL
+USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+```
+
+## 43.7 `announcements` and `market_events`
+
+```sql
+-- Session members can read; only teachers can insert
+CREATE POLICY "announcements_select_members" ON announcements FOR SELECT
+USING (EXISTS (SELECT 1 FROM session_members sm WHERE sm.session_id = announcements.session_id AND sm.user_id = auth.uid()));
+
+CREATE POLICY "announcements_insert_teacher" ON announcements FOR INSERT
+WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "market_events_select_members" ON market_events FOR SELECT
+USING (EXISTS (SELECT 1 FROM session_members sm WHERE sm.session_id = market_events.session_id AND sm.user_id = auth.uid()));
+
+CREATE POLICY "market_events_insert_teacher" ON market_events FOR INSERT
+WITH CHECK (EXISTS (SELECT 1 FROM sessions s WHERE s.id = market_events.session_id AND s.teacher_id = auth.uid()));
+```
+
+---
+
+# 44. Supabase Edge Function — Finnhub Proxy
+
+## 44.1 Purpose
+
+The Edge Function is a secure proxy between the frontend and Finnhub. It keeps the API key out of client-side code, applies in-memory caching, and handles rate limits gracefully.
+
+**File:** `supabase/functions/finnhub/index.ts`
+
+## 44.2 Supported Endpoints
+
+| `endpoint` param | Finnhub URL | Cache TTL |
+|---|---|---|
+| `quote` | `/quote?symbol=` | 10 seconds |
+| `search` | `/search?q=` | 60 seconds |
+| `profile` | `/stock/profile2?symbol=` | 24 hours |
+| `candle` | `/stock/candle` | 5 minutes |
+| `news` | `/company-news` | 10 minutes |
+| `metric` | `/stock/metric?symbol=&metric=all` | 1 hour |
+
+## 44.3 Function Logic
+
+```ts
+import { serve } from 'https://deno.land/std/http/server.ts'
+
+const FINNHUB_KEY  = Deno.env.get('FINNHUB_API_KEY')
+const FINNHUB_BASE = 'https://finnhub.io/api/v1'
+const cache        = new Map<string, { data: unknown; expiresAt: number }>()
+const TTL: Record<string, number> = {
+  quote: 10_000, search: 60_000, profile: 86_400_000,
+  candle: 300_000, news: 600_000, metric: 3_600_000,
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, {
+    headers: { 'Access-Control-Allow-Origin': '*',
+               'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey' }
+  })
+
+  if (!req.headers.get('Authorization'))
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+
+  const url      = new URL(req.url)
+  const endpoint = url.searchParams.get('endpoint') ?? ''
+  const symbol   = url.searchParams.get('symbol') ?? ''
+  const query    = url.searchParams.get('q') ?? ''
+  const res      = url.searchParams.get('resolution') ?? 'D'
+  const from     = url.searchParams.get('from') ?? ''
+  const to       = url.searchParams.get('to') ?? ''
+
+  if (!TTL[endpoint])
+    return new Response(JSON.stringify({ error: 'Invalid endpoint' }), { status: 400 })
+
+  const cacheKey = `${endpoint}:${symbol}:${query}:${res}:${from}:${to}`
+  const cached   = cache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now())
+    return new Response(JSON.stringify(cached.data), {
+      headers: { 'Content-Type': 'application/json', 'X-Cache': 'HIT' }
+    })
+
+  const urls: Record<string, string> = {
+    quote:   `${FINNHUB_BASE}/quote?symbol=${symbol}`,
+    search:  `${FINNHUB_BASE}/search?q=${query}`,
+    profile: `${FINNHUB_BASE}/stock/profile2?symbol=${symbol}`,
+    candle:  `${FINNHUB_BASE}/stock/candle?symbol=${symbol}&resolution=${res}&from=${from}&to=${to}`,
+    news:    `${FINNHUB_BASE}/company-news?symbol=${symbol}&from=${from}&to=${to}`,
+    metric:  `${FINNHUB_BASE}/stock/metric?symbol=${symbol}&metric=all`,
+  }
+
+  try {
+    const resp = await fetch(`${urls[endpoint]}&token=${FINNHUB_KEY}`)
+    if (resp.status === 429) {
+      if (cached) return new Response(JSON.stringify(cached.data), {
+        headers: { 'X-Cache': 'STALE', 'X-Rate-Limited': 'true' }
+      })
+      return new Response(JSON.stringify({ error: 'rate_limited' }), { status: 429 })
+    }
+    if (!resp.ok)
+      return new Response(JSON.stringify({ error: 'upstream_error' }), { status: 502 })
+
+    const data = await resp.json()
+    cache.set(cacheKey, { data, expiresAt: Date.now() + TTL[endpoint] })
+    return new Response(JSON.stringify(data), {
+      headers: { 'Content-Type': 'application/json', 'X-Cache': 'MISS' }
+    })
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'network_error' }), { status: 503 })
+  }
+})
+```
+
+## 44.4 WebSocket (Direct from Frontend)
+
+The Finnhub WebSocket connects directly from the browser — Edge Functions cannot hold persistent WebSocket connections. A separate `VITE_FINNHUB_WS_KEY` env var (the public free-tier key) is used only for this connection.
+
+```js
+const socket = new WebSocket(`wss://ws.finnhub.io?token=${import.meta.env.VITE_FINNHUB_WS_KEY}`)
+socket.onmessage = (e) => {
+  const msg = JSON.parse(e.data)
+  if (msg.type === 'trade') msg.data.forEach(t => updatePrice(t.s, t.p))
+}
+```
+
+---
+
+# 45. Achievement Unlock Conditions (Logic Rules)
+
+Exact boolean conditions checked after each relevant action.
+
+## 45.1 Standard Achievements
+
+| Badge ID | Condition |
+|---|---|
+| `tutorial_done` | `user.tutorialCompleted === true` — on tutorial completion |
+| `first_trade` | `transactionCount === 1` — after first trade insert |
+| `first_sell` | `sellTransactionCount === 1` — first sell only |
+| `first_profit` | `transaction.realized_gain > 0` — on any sell |
+| `first_loss` | `transaction.realized_gain < 0` — on any sell |
+| `diversified_5` | `distinctHeldSymbols >= 5` — after every buy |
+| `diversified_10` | `distinctHeldSymbols >= 10` |
+| `gain_5pct` | `portfolioGainPct >= 5.0` — after every price update |
+| `gain_10pct` | `portfolioGainPct >= 10.0` |
+| `gain_25pct` | `portfolioGainPct >= 25.0` |
+| `gain_50pct` | `portfolioGainPct >= 50.0` |
+| `gain_100pct` | `portfolioGainPct >= 100.0` |
+| `limit_order` | `limitOrderCount === 1` — on first limit order |
+| `stop_loss` | `stopLossCount === 1` — on first stop-loss |
+| `10_trades` | `transactionCount >= 10` |
+| `50_trades` | `transactionCount >= 50` |
+| `tech_investor` | `COUNT(holdings WHERE sector='Technology') >= 3` |
+| `all_sectors` | `COUNT(DISTINCT sector of held stocks) >= 5` |
+| `survive_crash` | Flash crash fired AND user had holdings AND no sells in 5 sim-minutes after |
+| `top_3` | `finalRank <= 3` — on simulation end |
+| `rank_1` | `finalRank === 1` — on simulation end |
+| `level_10` | `user.level >= 10` — after XP update |
+| `level_25` | `user.level >= 25` |
+
+## 45.2 Secret Achievement Conditions
+
+| Badge ID | Condition |
+|---|---|
+| `night_owl` | Trade executed when `simHour >= 22 OR simHour < 5` |
+| `paper_hands` | Sell of a stock occurs within 2 sim-hours of the matching buy |
+| `diamond_hands` | Stock dropped ≥ 15% from user's avg cost, still held, no sell of that symbol |
+| `all_in` | `tradeCost / cashBalanceBefore >= 0.95` |
+| `perfect_timing` | Buy executed within 1 sim-hour before a bull/earnings-beat event on that symbol |
+| `big_spender` | `tradeCost > 5000` on a single trade |
+
+## 45.3 De-duplication
+
+All checks first verify the achievement hasn't already been awarded:
+
+```js
+async function tryAward(userId, achievementId) {
+  const { data } = await supabase.from('user_achievements')
+    .select('id').eq('user_id', userId).eq('achievement_id', achievementId).single()
+  if (data) return  // already unlocked
+  await awardAchievement(userId, achievementId)
+}
+```
+
+---
+
+# 46. Badge Artwork Descriptions
+
+| Badge ID | Visual Description |
+|---|---|
+| `tutorial_done` | Small rocket launching upward with a star trail, electric blue |
+| `first_trade` | Two hands shaking over a coin, gold and white |
+| `first_sell` | Upward arrow exiting through a door, green arrow |
+| `first_profit` | Seedling sprouting from a coin, green plant on gold coin |
+| `first_loss` | Cracked coin, silver/grey — styled as a "lesson learned" medal |
+| `diversified_5` | Five coloured circles in a loose cluster, each a different colour |
+| `diversified_10` | Ten dots forming a constellation pattern |
+| `gain_5pct` | Rising bar chart, neon green bars |
+| `gain_10pct` | Taller rising bars with "10%" label in bold |
+| `gain_25pct` | Gold trophy with "25" engraved, purple base |
+| `gain_50pct` | Rocket at 45° ascending steeply, flames at base |
+| `gain_100pct` | One coin doubling into two with a spark between them |
+| `limit_order` | Crosshair/target with a price label at the centre line |
+| `stop_loss` | Shield with a downward arrow stopped by the face of the shield |
+| `10_trades` | Bold "10" with small trade arrows around it |
+| `50_trades` | Bold gold "50" |
+| `tech_investor` | Blue circuit board chip icon |
+| `all_sectors` | Pie chart divided into 5 equal differently-coloured sections |
+| `survive_crash` | Figure standing firm while lightning falls around it |
+| `top_3` | Three-step podium, top step in gold |
+| `rank_1` | Gold "#1" medal with ribbon |
+| `level_10` | Upward staircase with "10" at the top, silver |
+| `level_25` | Gold crown with "25" centred inside |
+| `night_owl` | Cartoon owl with glasses sitting on a moon crescent |
+| `paper_hands` | Two open palms releasing paper confetti |
+| `diamond_hands` | Two fists with diamond gems on knuckles, blue/cyan |
+| `all_in` | Poker chip with "ALL IN", red and gold |
+| `perfect_timing` | Clock with a lightning bolt at the exact correct moment |
+| `big_spender` | Oversized shiny PC$ coin with "5000" denomination |
+
+---
+
+# 47. XP Bar Visual Behaviour
+
+## 47.1 Locations
+
+The XP bar appears in four places: Dashboard (full width), Navbar (compact, hover reveal), Profile page (full width), Level-up card (large animated).
+
+## 47.2 Fill Calculation
+
+```js
+function xpBarFill(currentXP, level) {
+  const thisLevelXP = getXpThreshold(level)
+  const nextLevelXP = getXpThreshold(level + 1)
+  return Math.min(((currentXP - thisLevelXP) / (nextLevelXP - thisLevelXP)) * 100, 100)
+}
+```
+
+## 47.3 Normal XP Gain
+
+- Bar width transitions from old fill % to new fill % — 600ms, `ease-out`
+- A floating `+[X] XP` text appears near the triggering action, floats up 20px and fades out over 600ms
+
+## 47.4 Level-Up Sequence
+
+1. Bar fills from current position to 100% over proportional duration
+2. 100ms white flash on the full bar
+3. Level-up card fires (see §42.4 for timing)
+4. On card dismiss: bar resets instantly to 0%, then animates to new fill % over 400ms
+
+## 47.5 Max Level
+
+At Level 25, bar is permanently full and static. Label reads "Max Level — Market Guru".
+
+---
+
+# 48. Market Event Copy
+
+## 48.1 All Event Banners and Explanations
+
+**Flash Crash**
+Banner: `⚡ MARKET EVENT: Flash Crash — A sudden wave of automated selling has triggered a market-wide selloff. Prices are falling sharply across all sectors.`
+Explanation: "A flash crash is a very rapid price decline caused by automated algorithms reacting to each other. They are usually short-lived and prices often recover quickly."
+
+**Bull Run**
+Banner: `🚀 MARKET EVENT: Bull Run — Positive economic news has sparked broad buying. Most stocks are surging.`
+Explanation: "A bull run happens when investor confidence is high and many people buy at the same time, pushing prices up across the board."
+
+**Sector Selloff — Technology**
+Banner: `📉 MARKET EVENT: Tech Sector Selloff — Concerns over rising interest rates are hitting tech stocks hard. Technology companies are down sharply.`
+Explanation: "When interest rates rise, growth companies like tech firms become less attractive because future profits are worth less today. This causes tech stocks to sell off."
+
+**Sector Rally — Healthcare**
+Banner: `📈 MARKET EVENT: Healthcare Rally — A major drug approval has boosted confidence in the sector. Healthcare stocks are surging.`
+Explanation: "Sector rallies happen when good news for one company lifts sentiment for the whole industry. Even unrelated companies can rise on the wave of enthusiasm."
+
+**Earnings Beat**
+Banner: `🎯 MARKET EVENT: Earnings Beat — [COMPANY] just reported results far above expectations. The stock is surging.`
+Explanation: "Beating earnings means a company made more profit than analysts predicted. Investors reward this with higher stock prices."
+
+**Earnings Miss**
+Banner: `⚠️ MARKET EVENT: Earnings Miss — [COMPANY] reported disappointing results. The stock is selling off.`
+Explanation: "An earnings miss means the company made less profit than predicted. Investors often sell even if the company is still profitable."
+
+**Analyst Upgrade**
+Banner: `⭐ MARKET EVENT: Analyst Upgrade — [COMPANY] upgraded to 'Strong Buy' by a major bank. Stock is moving higher.`
+
+**Analyst Downgrade**
+Banner: `🔻 MARKET EVENT: Analyst Downgrade — [COMPANY] downgraded to 'Sell'. Stock is under pressure.`
+
+**Bear Market Signal**
+Banner: `🐻 MARKET EVENT: Bear Market Signal — Weak economic data has turned sentiment negative. Broad selling pressure across most stocks.`
+Explanation: "A bear market signal means more investors are choosing to sell than buy. This can be triggered by bad economic news, rising inflation, or general fear."
+
+**Market Recovery**
+Banner: `🌅 MARKET EVENT: Market Recovery — Markets are bouncing back after recent losses. Bargain hunters are buying the dip.`
+Explanation: "'Buying the dip' means purchasing stocks after a price drop, betting they'll recover. When enough investors do this at once, it creates a rebound."
+
+---
+
+# 49. App Copy Specification
+
+## 49.1 Auth Page
+
+| Element | Copy |
+|---|---|
+| Page title | "StockPilot" |
+| Tagline | "Take the controls. Trade without risk." |
+| Email placeholder | "you@example.com" |
+| Password placeholder | "••••••••" |
+| Display name placeholder | "e.g. Maya C." |
+| Login button | "Log In" |
+| Sign up button | "Create Account" |
+| Forgot password | "Forgot password?" |
+| Switch to sign up | "Don't have an account? Sign up" |
+| Switch to login | "Already have an account? Log in" |
+| Error: wrong password | "Incorrect email or password." |
+| Error: email taken | "An account with this email already exists." |
+| Error: weak password | "Password must be at least 8 characters." |
+| Error: network | "Could not connect. Check your internet connection." |
+
+## 49.2 Stock Browser
+
+| Element | Copy |
+|---|---|
+| Search placeholder | "Search by name or ticker..." |
+| No results | "No stocks found matching '[query]'. Try a different symbol or name." |
+| Market open pill | "🟢 Market Open" |
+| Market closed pill | "🔴 Market Closed" |
+| API fallback banner | "⚠ Live prices unavailable. Showing last known data." |
+| Stale price indicator | "⚠ Stale" |
+| Loading | "Loading stocks..." |
+
+## 49.3 Trade Panel
+
+| Element | Copy |
+|---|---|
+| Buy button | "Buy [TICKER]" |
+| Sell button | "Sell [TICKER]" |
+| Processing | "Processing..." |
+| Warning: 95%+ balance | "This trade uses most of your available PilotCoins." |
+| Warning: negative balance | "This trade will put your balance below zero." |
+| Error: insufficient funds | "Insufficient PilotCoins. Reduce quantity or sell other holdings." |
+| Error: not enough shares | "You only own [X] shares of [TICKER]." |
+| Error: zero quantity | "Please enter a valid number of shares." |
+| Error: market closed | "The market is currently closed." |
+| Error: trade failed | "Trade failed. Your balance was not changed. Please try again." |
+| Confirm title | "Confirm [Buy/Sell] Order" |
+| Confirm body | "You are about to [buy/sell] [X] shares of [TICKER] for PC$[total]." |
+
+## 49.4 Portfolio Page
+
+| Element | Copy |
+|---|---|
+| Holdings empty | "Your portfolio is empty. Start trading in the Stock Browser." |
+| Empty CTA | "Browse Stocks →" |
+| Open orders empty | "No pending orders." |
+| Stale banner | "⚠ Live prices unavailable. Calculations may not reflect current market values." |
+
+## 49.5 Toast Messages
+
+| Trigger | Message | Subtext |
+|---|---|---|
+| Buy success | "Bought [X] shares of [TICKER]" | "PC$[total] · +10 XP" |
+| Sell success | "Sold [X] shares of [TICKER]" | "PC$[proceeds] net · +10 XP" |
+| Limit placed | "Limit order set for [TICKER]" | "Executes at PC$[limit]" |
+| Stop-loss placed | "Stop-loss set for [TICKER]" | "Sells at PC$[stop]" |
+| Limit filled | "Limit order filled — [TICKER]" | "[X] shares at PC$[price]" |
+| Stop triggered | "Stop-loss triggered — [TICKER]" | "Sold [X] shares at PC$[price]" |
+| Order expired | "Order expired — [TICKER]" | "Limit order not filled before simulation ended." |
+| Price alert | "Price alert — [TICKER]" | "Price is now [above/below] PC$[threshold]" |
+| Achievement | "Achievement Unlocked!" | "[Badge Name] · +[X] XP" |
+| Portfolio reset | "Portfolio reset." | "Balance returned to PC$[X]." |
+| API down | "Live prices unavailable." | "Showing last known data. Will reconnect automatically." |
+| API restored | "Live prices restored." | "Real-time data is back." |
+
+---
+
+# 50. Simulation Speed — Technical Summary
+
+The simulation runs at **1 real minute = 1 simulated market hour**. A full NYSE trading day (6.5 hours) takes 6.5 real minutes.
+
+A `simulationClock` module advances `simCurrentTime` by 1 simulated minute every real second. `isMarketOpen` is true when `simCurrentTime` falls between 9:30am and 4:00pm on a simulated weekday.
+
+Market orders are blocked when `isMarketOpen === false`. Limit and stop-loss orders remain active at all times. Prices still stream from Finnhub regardless of simulated market hours — the speed-up affects only the pacing of the experience, not the underlying price data.
+
+---
+
+# 51. Page States — Portfolio, Stocks, and Leaderboard
+
+## 51.1 Portfolio Page States
+
+**Loading:** Skeleton shimmer blocks replace all values. Holdings table shows 3 skeleton rows. Charts show grey placeholder rectangles with spinner.
+
+**Empty (No Holdings):**
+```
+Your portfolio is empty.
+Start trading to see your holdings here.
+[ Browse Stocks → ]
+```
+
+**Error (Data Failed):** "Could not load portfolio data. Please refresh the page." with a Refresh button.
+
+**Stale Prices:** Yellow banner: "⚠ Live prices unavailable. Calculations may not reflect current market values." Each price shows `⚠ Stale` badge.
+
+## 51.2 Stock Browser Page States
+
+**Loading:** Search bar functional immediately. 20 skeleton stock rows shown. Sort/filter controls disabled.
+
+**No Search Results:**
+```
+No stocks found matching "[query]".
+Try a different symbol or company name.
+[ Clear search ]
+```
+
+**API Full Failure:**
+```
+⚠ Live market data is unavailable.
+Showing demo data for practice trading.
+[ Retry connection ]
+```
+
+## 51.3 Leaderboard Page States
+
+**Loading:** Page heading visible. 5 skeleton rows with shimmer.
+
+**Only One Student:**
+```
+No other students have joined this session yet.
+Share the invite link!
+```
+
+**Hidden by Teacher:**
+```
+🔒 The leaderboard is currently hidden.
+Check back soon.
+```
+
+**Hidden by Student:**
+```
+Leaderboard is hidden.   [ Show Leaderboard ]
+```
+
+**Simulation Ended:** Rankings frozen. Banner: "This simulation has ended. These are the final standings." All values show final figures.
+
+---
+
 *End of StockPilot Product Requirements Document v1.0*
-*Total sections: 37 | Author: Brayden Sun | Last updated: 2026-05-13*
+*Total sections: 51 | Author: Brayden Sun | Last updated: 2026-05-13*
 
 
