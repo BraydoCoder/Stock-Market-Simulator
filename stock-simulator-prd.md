@@ -70,6 +70,15 @@
 58. Keyboard Shortcuts
 59. Browser Support Matrix
 60. Daily Development Schedule (4-Week Plan)
+61. Design Tokens
+62. Environment Variables Reference
+63. Error Handling Strategy
+64. API Rate Limit Budget
+65. Session Lifecycle
+66. Student Join Flow
+67. Teacher Onboarding Flow
+68. Portfolio Math Reference
+69. CI/CD Pipeline
 
 ---
 
@@ -6111,7 +6120,923 @@ Estimated hours are based on a solo developer working 3–5 hours per day after 
 
 ---
 
+---
+
+# 61. Design Tokens
+
+All visual constants are defined here as the single source of truth. Every component references these tokens — never hardcode colours, spacing, or radii directly.
+
+## 61.1 Colour Palette
+
+| Token | Hex | Usage |
+|---|---|---|
+| `--color-bg` | `#0A0E1A` | Page background |
+| `--color-surface` | `#111827` | Card backgrounds, panels |
+| `--color-surface-elevated` | `#1F2937` | Dropdowns, modals, tooltips |
+| `--color-border` | `#374151` | All borders and dividers |
+| `--color-border-subtle` | `#1F2937` | Very subtle inner borders |
+| `--color-accent-primary` | `#00D4AA` | Primary CTA buttons, active states, links |
+| `--color-accent-secondary` | `#6366F1` | Secondary actions, badges, highlights |
+| `--color-accent-glow` | `rgba(0, 212, 170, 0.15)` | Glow effects on hover/focus |
+| `--color-gain` | `#10B981` | Positive P&L, price increases, buy confirmations |
+| `--color-gain-bg` | `rgba(16, 185, 129, 0.1)` | Gain value backgrounds |
+| `--color-loss` | `#EF4444` | Negative P&L, price drops, sell confirmations |
+| `--color-loss-bg` | `rgba(239, 68, 68, 0.1)` | Loss value backgrounds |
+| `--color-warning` | `#F59E0B` | Warnings, caution states, market alerts |
+| `--color-warning-bg` | `rgba(245, 158, 11, 0.1)` | Warning backgrounds |
+| `--color-text-primary` | `#F9FAFB` | Headings, primary body text |
+| `--color-text-secondary` | `#9CA3AF` | Labels, subtitles, secondary info |
+| `--color-text-muted` | `#6B7280` | Disabled text, placeholder text |
+| `--color-text-inverse` | `#0A0E1A` | Text on light/coloured backgrounds |
+| `--color-xp-bar` | `#6366F1` | XP progress bar fill |
+| `--color-xp-bar-bg` | `#1F2937` | XP progress bar track |
+| `--color-leaderboard-gold` | `#F59E0B` | Rank 1 highlight |
+| `--color-leaderboard-silver` | `#9CA3AF` | Rank 2 highlight |
+| `--color-leaderboard-bronze` | `#CD7F32` | Rank 3 highlight |
+
+## 61.2 Typography
+
+| Token | Value | Usage |
+|---|---|---|
+| `--font-display` | `'Orbitron', sans-serif` | Logo, level titles, large stat numbers |
+| `--font-body` | `'Space Grotesk', sans-serif` | All UI text, labels, body copy |
+| `--font-mono` | `'JetBrains Mono', monospace` | Price tickers, code, transaction IDs |
+| `--text-xs` | `0.75rem / 12px` | Badges, fine print, timestamps |
+| `--text-sm` | `0.875rem / 14px` | Secondary labels, table cells |
+| `--text-base` | `1rem / 16px` | Default body text |
+| `--text-lg` | `1.125rem / 18px` | Card titles, section labels |
+| `--text-xl` | `1.25rem / 20px` | Page sub-headings |
+| `--text-2xl` | `1.5rem / 24px` | Page headings |
+| `--text-3xl` | `1.875rem / 30px` | Hero numbers (portfolio value) |
+| `--text-4xl` | `2.25rem / 36px` | Large display values |
+| `--font-weight-normal` | `400` | Body text |
+| `--font-weight-medium` | `500` | Labels, nav items |
+| `--font-weight-semibold` | `600` | Headings, button text |
+| `--font-weight-bold` | `700` | Display numbers, emphasis |
+
+## 61.3 Spacing Scale
+
+StockPilot uses a 4px base unit. All spacing values are multiples of 4.
+
+| Token | Value | Usage |
+|---|---|---|
+| `--space-1` | `4px` | Tight internal padding |
+| `--space-2` | `8px` | Icon gaps, tight chip padding |
+| `--space-3` | `12px` | Small component padding |
+| `--space-4` | `16px` | Standard component padding |
+| `--space-5` | `20px` | Card padding (small) |
+| `--space-6` | `24px` | Card padding (standard) |
+| `--space-8` | `32px` | Section gaps |
+| `--space-10` | `40px` | Large section padding |
+| `--space-12` | `48px` | Page section margins |
+| `--space-16` | `64px` | Hero spacing |
+| `--space-20` | `80px` | Full-page vertical padding |
+
+## 61.4 Border Radius
+
+| Token | Value | Usage |
+|---|---|---|
+| `--radius-sm` | `4px` | Tags, small chips |
+| `--radius-md` | `8px` | Input fields, small cards |
+| `--radius-lg` | `12px` | Standard cards, buttons |
+| `--radius-xl` | `16px` | Large cards, modals |
+| `--radius-2xl` | `24px` | Feature cards, panels |
+| `--radius-full` | `9999px` | Pills, avatars, progress bars |
+
+## 61.5 Shadows
+
+| Token | Value | Usage |
+|---|---|---|
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.4)` | Subtle card lift |
+| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.5)` | Elevated cards |
+| `--shadow-lg` | `0 8px 32px rgba(0,0,0,0.6)` | Modals, drawers |
+| `--shadow-glow-green` | `0 0 20px rgba(16,185,129,0.3)` | Gain pulse, buy success |
+| `--shadow-glow-red` | `0 0 20px rgba(239,68,68,0.3)` | Loss pulse, sell warning |
+| `--shadow-glow-accent` | `0 0 20px rgba(0,212,170,0.3)` | CTA hover glow |
+| `--shadow-glow-indigo` | `0 0 20px rgba(99,102,241,0.3)` | Level-up, XP glow |
+
+## 61.6 Z-Index Scale
+
+| Token | Value | Usage |
+|---|---|---|
+| `--z-base` | `0` | Default stacking |
+| `--z-card` | `10` | Cards, dropdown anchors |
+| `--z-sticky` | `50` | Sticky table headers |
+| `--z-navbar` | `100` | Top navigation bar |
+| `--z-dropdown` | `200` | Dropdown menus |
+| `--z-modal-backdrop` | `300` | Modal overlay |
+| `--z-modal` | `400` | Modal content |
+| `--z-toast` | `500` | Toast notifications |
+| `--z-market-event` | `550` | Market event banner |
+| `--z-tutorial` | `600` | Tutorial overlay |
+
+## 61.7 Transition Durations
+
+| Token | Value | Usage |
+|---|---|---|
+| `--duration-fast` | `150ms` | Hover states, small UI feedback |
+| `--duration-normal` | `250ms` | Component transitions, tooltips |
+| `--duration-slow` | `400ms` | Page transitions, modals sliding in |
+| `--duration-xp` | `800ms` | XP bar fill animation |
+| `--duration-price-flash` | `600ms` | Price update pulse animation |
+| `--easing-default` | `cubic-bezier(0.4, 0, 0.2, 1)` | Standard ease-in-out |
+| `--easing-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Springy pop for level-up, badges |
+| `--easing-out` | `cubic-bezier(0, 0, 0.2, 1)` | Elements leaving the screen |
+
+## 61.8 CSS Custom Properties — Root Declaration
+
+```css
+:root {
+  --color-bg: #0A0E1A;
+  --color-surface: #111827;
+  --color-surface-elevated: #1F2937;
+  --color-border: #374151;
+  --color-border-subtle: #1F2937;
+  --color-accent-primary: #00D4AA;
+  --color-accent-secondary: #6366F1;
+  --color-accent-glow: rgba(0, 212, 170, 0.15);
+  --color-gain: #10B981;
+  --color-gain-bg: rgba(16, 185, 129, 0.1);
+  --color-loss: #EF4444;
+  --color-loss-bg: rgba(239, 68, 68, 0.1);
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #9CA3AF;
+  --color-text-muted: #6B7280;
+  --color-text-inverse: #0A0E1A;
+  --color-xp-bar: #6366F1;
+  --color-xp-bar-bg: #1F2937;
+  --color-leaderboard-gold: #F59E0B;
+  --color-leaderboard-silver: #9CA3AF;
+  --color-leaderboard-bronze: #CD7F32;
+
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
+  --space-8: 32px;  --space-10: 40px; --space-12: 48px;
+  --space-16: 64px; --space-20: 80px;
+
+  --radius-sm: 4px;   --radius-md: 8px;    --radius-lg: 12px;
+  --radius-xl: 16px;  --radius-2xl: 24px;  --radius-full: 9999px;
+
+  --z-base: 0;       --z-card: 10;        --z-sticky: 50;
+  --z-navbar: 100;   --z-dropdown: 200;   --z-modal-backdrop: 300;
+  --z-modal: 400;    --z-toast: 500;      --z-market-event: 550;
+  --z-tutorial: 600;
+
+  --duration-fast: 150ms;    --duration-normal: 250ms;
+  --duration-slow: 400ms;    --duration-xp: 800ms;
+  --duration-price-flash: 600ms;
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-out: cubic-bezier(0, 0, 0.2, 1);
+}
+```
+
+---
+
+# 62. Environment Variables Reference
+
+All environment variables are prefixed with `VITE_` so Vite exposes them to the client bundle.
+
+## 62.1 Client-Side Variables (`.env.local`)
+
+| Variable | Example Value | Required | Description |
+|---|---|---|---|
+| `VITE_SUPABASE_URL` | `https://xyz.supabase.co` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | `eyJh...` | Yes | Supabase public anon key (safe to expose) |
+| `VITE_FINNHUB_API_KEY` | `abc123xyz` | Yes | Finnhub API key for WebSocket + REST |
+| `VITE_FINNHUB_PROXY_URL` | `https://xyz.supabase.co/functions/v1/finnhub-proxy` | Yes | Edge Function URL for cached REST calls |
+| `VITE_APP_ENV` | `development` or `production` | Yes | Controls debug logging and mock data fallback |
+| `VITE_SIMULATION_SPEED` | `60` | No | Multiplier: 1 real minute = N simulated minutes. Default: 60 |
+| `VITE_STARTING_BALANCE` | `10000` | No | Default starting balance in PC$. Default: 10000 |
+
+## 62.2 Edge Function Secrets (Supabase Dashboard → Project → Edge Functions → Secrets)
+
+| Variable | Description |
+|---|---|
+| `FINNHUB_API_KEY` | Server-side Finnhub key (not exposed to client) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key for admin DB operations inside Edge Functions |
+| `SUPABASE_URL` | Supabase URL accessible from Deno runtime |
+
+## 62.3 Supabase Auth Settings (Dashboard → Authentication → URL Configuration)
+
+| Setting | Value |
+|---|---|
+| Site URL | `https://stockpilot.vercel.app` (production) |
+| Redirect URLs | `https://stockpilot.vercel.app/**`, `http://localhost:5173/**` |
+| JWT expiry | `3600` seconds (1 hour) |
+| Refresh token rotation | Enabled |
+
+## 62.4 `.env.local` Template
+
+```bash
+# Supabase
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Finnhub
+VITE_FINNHUB_API_KEY=your_finnhub_api_key
+VITE_FINNHUB_PROXY_URL=your_edge_function_url
+
+# App config
+VITE_APP_ENV=development
+VITE_SIMULATION_SPEED=60
+VITE_STARTING_BALANCE=10000
+```
+
+## 62.5 Central Config Module
+
+```javascript
+// src/config.js — single place to read all env vars
+export const config = {
+  supabase: {
+    url: import.meta.env.VITE_SUPABASE_URL,
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  },
+  finnhub: {
+    apiKey: import.meta.env.VITE_FINNHUB_API_KEY,
+    proxyUrl: import.meta.env.VITE_FINNHUB_PROXY_URL,
+  },
+  app: {
+    env: import.meta.env.VITE_APP_ENV ?? 'development',
+    simulationSpeed: Number(import.meta.env.VITE_SIMULATION_SPEED ?? 60),
+    startingBalance: Number(import.meta.env.VITE_STARTING_BALANCE ?? 10000),
+  },
+}
+```
+
+## 62.6 Missing Variable Behaviour
+
+If `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` are missing at startup, the app shows a hard error screen: *"Configuration error — please contact your administrator."* All other missing variables fall back to their documented defaults.
+
+---
+
+# 63. Error Handling Strategy
+
+Every failure mode has a defined behaviour. No error is silently swallowed.
+
+## 63.1 Error Categories
+
+| Category | Examples | Recovery |
+|---|---|---|
+| Network offline | Device loses internet | Offline banner, retry queue |
+| API rate limit | Finnhub 429 | Serve cached data, back-off retry |
+| API down | Finnhub 5xx | Fall back to mock data, show warning |
+| Auth error | Token expired, invalid session | Silent refresh; redirect to login if fails |
+| Trade error | Insufficient balance, invalid quantity | Inline toast, no DB write |
+| Supabase error | DB write failure, RLS violation | Toast with retry option |
+| WebSocket error | Connection drop, parse error | Auto-reconnect with exponential back-off |
+| localStorage full | Quota exceeded | Prune oldest history entries |
+| Bad user input | Negative shares, NaN price | Inline field validation, block submit |
+
+## 63.2 Network Offline
+
+**Detection:** `window.addEventListener('offline', ...)` and `window.addEventListener('online', ...)`
+
+**When offline:**
+- Amber full-width banner below navbar: *"No internet connection — prices may be stale"*
+- WebSocket reconnect attempts pause
+- Trade actions are blocked with toast: *"No connection — trades disabled"*
+- Cached portfolio data remains visible
+
+**When back online:**
+- Banner dismisses with fade
+- WebSocket reconnect resumes
+- Toast: *"Back online — prices refreshing"*
+
+## 63.3 Finnhub REST API Errors
+
+| HTTP Status | Behaviour |
+|---|---|
+| `429` Rate limited | Serve stale cached data; retry after `Retry-After` header value |
+| `403` Invalid key | Persistent error card: *"API key invalid — check your configuration"* |
+| `500 / 502 / 503` Server error | Fall back to mock data; amber chip: *"Using simulated data"* |
+| Timeout (>8s) | Abort and serve cache; increment retry counter |
+
+**Retry policy:** Max 3 retries, back-off: 1s → 2s → 4s. After 3 failures, serve cached data and flag the component as stale.
+
+## 63.4 Finnhub WebSocket Errors
+
+| Event | Behaviour |
+|---|---|
+| Unexpected `onclose` | Reconnect with exponential back-off: 1s → 2s → 4s → 8s → 16s → 30s cap |
+| `onerror` | Log error, trigger reconnect sequence |
+| No tick for 30s | Show *"Prices may be delayed"* chip on affected stocks |
+| Bad JSON | Skip message, log to console, do not crash |
+| Auth error | Show persistent error card, stop all reconnect attempts |
+
+## 63.5 Supabase Errors
+
+| Scenario | Code | Behaviour |
+|---|---|---|
+| Auth token expired | `401` | Silent `refreshSession()`; if fails, redirect to `/login` |
+| RLS violation | `403` | Toast: *"Permission denied"* |
+| Row not found | `PGRST116` | Return empty state, do not crash |
+| Unique constraint | `23505` | Toast: *"Already exists"* |
+| Foreign key violation | `23503` | Toast: *"Invalid reference — please reload"* |
+| Connection timeout | `timeout` | Toast with retry button |
+| Network error | `FetchError` | Treated as network offline |
+
+## 63.6 Trade Execution Errors
+
+| Error | User-facing message |
+|---|---|
+| Insufficient balance | *"Insufficient PC$ — you need PC$X more"* |
+| Exceeds available shares | *"You only own X shares of TICKER"* |
+| Zero or negative quantity | *"Enter a valid number of shares"* |
+| Non-numeric input | *"Shares must be a number"* |
+| Market paused | *"Trading is paused — wait for your teacher to resume"* |
+| Session ended | *"This simulation has ended — no new trades allowed"* |
+| Symbol not found | *"Stock not found — it may have been delisted"* |
+
+## 63.7 localStorage Errors
+
+**Quota exceeded (`QuotaExceededError`):**
+1. Catch the error
+2. Prune transaction history entries older than 90 days
+3. Retry the write
+4. If still failing, prune to most recent 50 transactions
+5. If still failing, show warning toast: *"Storage nearly full — oldest history cleared"*
+
+**Corrupted data:** Wrap every `JSON.parse` in a try/catch. On failure, clear the corrupted key, return the default value, log a console warning.
+
+## 63.8 Global Error Boundary
+
+```javascript
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled rejection:', event.reason)
+  showToast('Something went wrong — please reload the page', 'error')
+})
+
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error)
+})
+```
+
+---
+
+# 64. API Rate Limit Budget
+
+Finnhub free tier: **60 REST API calls per minute**. WebSocket is free and unlimited.
+
+## 64.1 Call Cost Per User Action
+
+| Action | Endpoint(s) | Calls | Cache TTL |
+|---|---|---|---|
+| Dashboard load | `/quote` × portfolio holdings | 1–3 | 30s |
+| Stock browser page load | `/quote` × 20 visible stocks | 1–2 | 30s |
+| Stock detail page open | `/quote` + `/stock/candle` + `/company-news` | 3 | 30s / 60s / 5m |
+| Execute trade | None (uses cached price) | 0 | — |
+| Manual price refresh | `/quote` × 1 | 1 | Bypasses cache |
+| News feed tab | `/general-news` | 1 | 5m |
+| Search stock | `/search` | 1 | 10m |
+| Company fundamentals | `/stock/metric` | 1 | 30m |
+| WebSocket price tick | WebSocket only | 0 | — |
+
+## 64.2 Worst-Case Concurrent Load (30 Students)
+
+| Scenario | Without Cache | With Edge Function Cache |
+|---|---|---|
+| 30 students open same stock detail | 90 calls | 3 calls (one fetch, rest served from cache) |
+| 30 students open different stock details | 90 calls | 90 calls (cold cache worst case) |
+| 30 students refresh dashboard | 30–90 calls | 1–3 calls (shared portfolio stocks) |
+
+**The Edge Function proxy is mandatory for classroom use.** Without it, 30 simultaneous cold page loads would exhaust the 60 req/min limit instantly.
+
+## 64.3 Cache TTL Reference
+
+| Endpoint | TTL |
+|---|---|
+| `/quote` | 30 seconds |
+| `/stock/candle` (intraday) | 60 seconds |
+| `/stock/candle` (daily/weekly) | 5 minutes |
+| `/company-news` | 5 minutes |
+| `/general-news` | 5 minutes |
+| `/search` | 10 minutes |
+| `/stock/metric` | 30 minutes |
+| `/stock/profile2` | 60 minutes |
+
+## 64.4 Rate Limit Hit Response
+
+When the Edge Function receives a `429` from Finnhub:
+1. Return the last cached value for that endpoint with header `X-Cache: STALE`
+2. The client receives stale data seamlessly — no error shown unless data age exceeds `2 × TTL`
+3. If data exceeds `2 × TTL`, show amber chip on the affected component: *"Prices may be delayed"*
+
+## 64.5 WebSocket Subscription Budget
+
+Subscribe only to symbols currently visible on screen plus all symbols in the user's portfolio.
+
+```javascript
+// Subscribe on scroll-into-view, unsubscribe on scroll-out
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(({ target, isIntersecting }) => {
+    const symbol = target.dataset.symbol
+    isIntersecting
+      ? ws.send(JSON.stringify({ type: 'subscribe', symbol }))
+      : ws.send(JSON.stringify({ type: 'unsubscribe', symbol }))
+  })
+})
+```
+
+Cap total active subscriptions at **50 symbols** per client.
+
+---
+
+# 65. Session Lifecycle
+
+A simulation session moves through defined states. Each state controls what students and teachers can do.
+
+## 65.1 Session States
+
+| State | Students Can Trade | Prices Update | Description |
+|---|---|---|---|
+| `CREATED` | No | No | Session exists but has not started |
+| `ACTIVE` | Yes | Yes | Simulation is running |
+| `PAUSED` | No | No | Teacher has paused |
+| `ENDED` | No | No (frozen at end time) | Simulation period is over |
+| `ARCHIVED` | No | No | Hidden from student session list |
+
+## 65.2 State Transition Diagram
+
+```
+  Teacher      Teacher              Teacher
+  creates      starts               pauses/resumes
+     │            │                     │
+  CREATED ──► ACTIVE ◄──────────────► PAUSED
+                  │
+                  │ End date reached OR teacher ends
+                  ▼
+               ENDED ──► (Teacher resets) ──► CREATED
+                  │
+                  │ Teacher archives
+                  ▼
+              ARCHIVED
+```
+
+## 65.3 Transition Rules
+
+| From | To | Trigger | Side Effects |
+|---|---|---|---|
+| `CREATED` | `ACTIVE` | Teacher clicks "Start Session" | WebSocket subscriptions activate; student dashboards unlock; broadcast toast to all students |
+| `ACTIVE` | `PAUSED` | Teacher clicks "Pause" | All open limit/stop-loss orders **freeze** (not cancelled); prices stop updating; trade panel locked for all students |
+| `PAUSED` | `ACTIVE` | Teacher clicks "Resume" | Frozen orders resume monitoring at current price; prices restart; trade panel unlocks |
+| `ACTIVE` | `ENDED` | End date/time reached OR teacher clicks "End Now" | Final portfolio values snapshot to `session_snapshots`; leaderboard locked; results screen shown |
+| `PAUSED` | `ENDED` | Teacher clicks "End Now" | Same as above |
+| `ENDED` | `ARCHIVED` | Teacher clicks "Archive" | Session hidden from student join list; data retained 90 days |
+| `ACTIVE/PAUSED/ENDED` | `CREATED` | Teacher clicks "Reset" | All holdings, transactions, and orders deleted; all balances restored to starting amount; XP cleared for this session; `reset_count` incremented |
+
+## 65.4 Open Orders During Pause
+
+When `ACTIVE` → `PAUSED`:
+1. All orders with `status = 'OPEN'` have `paused_at` set to now
+2. Order monitoring loop stops checking prices
+3. Orders retain their limit/stop price — they are not cancelled
+4. When session resumes, monitoring restarts from the current live price
+5. An order that would have filled during the pause does **not** retroactively fill — it resumes checking from the moment trading restarts
+
+## 65.5 End-of-Session Snapshot
+
+When a session reaches `ENDED`:
+1. A `session_snapshots` record is written for every student: final portfolio value, rank, total trades, XP earned
+2. The leaderboard is locked at those final values
+3. The results screen becomes available to all students
+4. Students can view their portfolio and history in read-only mode
+5. New trades, orders, and XP gains are blocked
+
+## 65.6 Database Schema for Session State
+
+```sql
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS
+  status TEXT NOT NULL DEFAULT 'CREATED'
+    CHECK (status IN ('CREATED', 'ACTIVE', 'PAUSED', 'ENDED', 'ARCHIVED')),
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
+  paused_at TIMESTAMPTZ,
+  reset_count INTEGER NOT NULL DEFAULT 0;
+```
+
+---
+
+# 66. Student Join Flow
+
+Students join in one of two modes: **Solo** (independent play) or **Class** (teacher-run session with a 6-digit join code).
+
+## 66.1 Mode Comparison
+
+| Feature | Solo Mode | Class Mode |
+|---|---|---|
+| Join method | Auto-created on registration | 6-digit join code (e.g. SP-4829) |
+| Leaderboard | None | Live class leaderboard |
+| Teacher controls | None | Pause / reset / end / broadcast |
+| Starting balance | Default PC$10,000 | Set by teacher |
+| Session duration | Indefinite | Set by teacher |
+| XP and achievements | Fully functional | Fully functional |
+
+## 66.2 Solo Mode Flow
+
+1. User visits StockPilot → clicks **"Play Solo"**
+2. Registration: email, password, display name
+3. Email verification sent
+4. User verifies → redirected to dashboard
+5. A solo session is auto-created with default settings (PC$10,000, no end date, 60× speed)
+6. Dashboard unlocks immediately — user can trade right away
+
+## 66.3 Class Mode Flow — Student Side
+
+1. Teacher shares join code (e.g. **SP-4829**) with the class
+2. Student clicks **"Join a Class"**
+3. Registration form includes a join code field
+4. On submit:
+   - Validate join code format: `[A-Z]{2}-\d{4}` (2 uppercase letters + hyphen + 4 digits)
+   - Query `sessions` for a matching code with status `CREATED` or `ACTIVE`
+   - If not found: *"Invalid or expired join code"*
+   - If found: create account + insert `session_members` row
+5. Email verification sent
+6. After verification → redirected to class session dashboard
+7. Student appears on the teacher's admin dashboard in real time
+
+## 66.4 Join Code Format
+
+| Property | Value |
+|---|---|
+| Format | 2 uppercase letters + hyphen + 4 digits — e.g. `SP-4829` |
+| Letter set | A–Z excluding I and O (avoids confusion with 1 and 0) |
+| Total combinations | 24² × 10⁴ = 5,760,000 unique codes |
+| Validity | Active while session status is `CREATED` or `ACTIVE` |
+| Reuse policy | Codes are never reused; retired when session is archived |
+
+```javascript
+function validateJoinCode(input) {
+  const cleaned = input.toUpperCase().replace(/\s/g, '')
+  const pattern = /^[A-HJ-NP-Z]{2}-\d{4}$/
+  return pattern.test(cleaned) ? cleaned : null
+}
+```
+
+## 66.5 Switching From Solo to Class
+
+A student in Solo mode can join a class later:
+1. Navigate to **Settings → Join a Class**
+2. Enter join code
+3. A new `session_members` row is created for the class session — solo progress is preserved separately
+4. The active session switches to the class session
+5. Students can switch between sessions via a session switcher dropdown in the navbar
+
+## 66.6 Already-Registered User Joining a Class
+
+If a student already has an account:
+1. Log in normally
+2. Navigate to **Settings → Join a Class**
+3. Enter join code
+4. System adds them to the session without creating a new account
+
+## 66.7 One Student, Multiple Sessions
+
+- A student can be a member of multiple sessions simultaneously (e.g. solo + class)
+- Each session has its own isolated portfolio, balance, and transaction history
+- XP and achievements are **global** — earned across all sessions and shared between them
+- Navbar shows a session switcher if the user is in more than one session
+
+---
+
+# 67. Teacher Onboarding Flow
+
+## 67.1 Step 1 — Register as a Teacher
+
+1. Visit StockPilot → click **"I'm a Teacher"**
+2. Fill in: email, password, display name, school name (optional)
+3. Select role: **Teacher** → sets `role = 'teacher'` in `users` table
+4. Submit → email verification sent
+
+## 67.2 Step 2 — Verify Email
+
+1. Click verification link
+2. Redirected to `/admin` teacher dashboard
+3. Welcome prompt: *"Ready to create your first session?"*
+
+## 67.3 Step 3 — Create a Session
+
+| Field | Description | Default |
+|---|---|---|
+| Session name | e.g. "Period 3 — Spring 2026" | Required |
+| Starting balance | PC$ per student | PC$10,000 |
+| End date / time | When simulation ends | 30 days from start |
+| Simulation speed | 1 real min = X market hours | 60 |
+| Allow fractional shares | Toggle on/off | On |
+| Transaction fee | % of trade value | 0.5% |
+| Market events | Enable random events | On |
+
+## 67.4 Step 4 — Get the Join Code
+
+1. System generates a join code immediately after session creation (e.g. **SP-4829**)
+2. Code is displayed prominently on the admin dashboard
+3. **"Copy code"** and **"Copy join link"** buttons provided
+4. Join link format: `https://stockpilot.app/join/SP-4829`
+
+## 67.5 Step 5 — Monitor Students Joining
+
+- Admin dashboard shows a live list: display name, email, joined time, online status
+- Join count displayed: *"12 / 30 students have joined"*
+- Teacher can remove any student from the session
+
+## 67.6 Step 6 — Start the Session
+
+1. Teacher clicks **"Start Session"**
+2. Session status: `CREATED` → `ACTIVE`
+3. Toast broadcasts to all joined students: *"Your teacher has started the simulation — let's trade!"*
+4. Countdown timer starts on all dashboards
+
+## 67.7 Step 7 — Manage During Simulation
+
+From the admin dashboard, teacher can:
+- View live portfolio value and rank for every student
+- Pause / resume the simulation
+- Broadcast an announcement to all students
+- View per-student transaction logs
+- Trigger a market event manually
+- Export leaderboard to CSV at any time
+
+## 67.8 Step 8 — End and Export
+
+1. Teacher clicks **"End Session"** or end date is reached automatically
+2. Results screen shown to all students
+3. Final leaderboard locked
+4. Teacher can download a full CSV: student name, final value, % gain, trades made, XP earned
+
+## 67.9 Admin Dashboard Layout
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [StockPilot Admin]          Session: Period 3 · SP-4829        │
+│                              Status: ACTIVE ● 18d 4h remaining  │
+├──────────────┬──────────────────────────────────────────────────┤
+│  28 joined   │  1. Maya Chen       PC$14,230   +42.3%           │
+│  26 online   │  2. Jordan Lee      PC$13,870   +38.7%           │
+│              │  3. Alex Park       PC$12,910   +29.1%           │
+│  [Pause]     │  ...                                             │
+│  [End Now]   │  [Export CSV]    [Broadcast Announcement]        │
+│  [Reset]     │                                                  │
+└──────────────┴──────────────────────────────────────────────────┘
+```
+
+---
+
+# 68. Portfolio Math Reference
+
+All financial calculations are defined here as the single authoritative source. Both client-side display and server-side storage must use these exact formulas.
+
+## 68.1 Variables
+
+| Variable | Description |
+|---|---|
+| `P` | Current market price per share |
+| `A` | Average cost per share (weighted average) |
+| `S` | Number of shares held |
+| `C` | Cash balance |
+| `B₀` | Starting balance (default PC$10,000) |
+| `V` | Total portfolio value |
+| `F` | Transaction fee rate (0.005 = 0.5%) |
+
+## 68.2 Average Cost on Buy
+
+When adding shares to an existing position:
+
+```
+new_avg_cost = (existing_shares × existing_avg_cost + new_shares × buy_price)
+               ─────────────────────────────────────────────────────────────
+                           existing_shares + new_shares
+```
+
+**Example:** Own 10 shares at PC$100. Buy 5 more at PC$120.
+`new_avg_cost = (10×100 + 5×120) / 15 = 1600 / 15 = PC$106.6667`
+
+Stored to 6 decimal places. Displayed rounded to 2 decimal places.
+
+## 68.3 Trade Cost and Proceeds
+
+**Buy:**
+```
+gross_cost = shares × price
+fee        = ceil(gross_cost × F × 100) / 100   ← always round fee UP to nearest cent
+total_cost = gross_cost + fee
+```
+
+**Sell:**
+```
+gross_proceeds = shares × price
+fee            = ceil(gross_proceeds × F × 100) / 100
+net_proceeds   = gross_proceeds − fee
+```
+
+## 68.4 Unrealized Gain / Loss
+
+Paper profit on shares currently held:
+
+```
+unrealized_gain   = (P − A) × S
+unrealized_gain_% = ((P − A) / A) × 100
+```
+
+Display: green with `+` prefix if positive, red if negative, grey if zero.
+
+## 68.5 Realized Gain / Loss
+
+Profit locked in on completed sell:
+
+```
+realized_gain = (sell_price − avg_cost_at_sale) × shares_sold − fee
+```
+
+`avg_cost_at_sale` is snapshotted from `holdings.avg_cost` before the transaction executes and stored permanently in the `transactions` table.
+
+## 68.6 Total Portfolio Value
+
+```
+V = C + Σ(Sᵢ × Pᵢ)   for all holdings i
+```
+
+Recalculated on every price tick for portfolio holdings. Stored in `session_members.portfolio_value` for leaderboard ranking.
+
+## 68.7 Total Return
+
+```
+total_return_% = ((V − B₀) / B₀) × 100
+```
+
+## 68.8 Daily P&L
+
+```
+daily_pnl   = V_now − V_24h_ago
+daily_pnl_% = (daily_pnl / V_24h_ago) × 100
+```
+
+`V_24h_ago` is read from `portfolio_snapshots` (recorded every hour). If no snapshot exists (new user), `daily_pnl = 0`.
+
+## 68.9 Position Concentration Warning
+
+```
+weight_% = (Sᵢ × Pᵢ / V) × 100
+```
+
+If `weight_% > 30%`, show warning on portfolio screen:
+*"TICKER makes up X% of your portfolio — consider diversifying"*
+
+## 68.10 Break-Even Price
+
+The price at which selling breaks even after fees:
+
+```
+break_even = A × (1 + F)
+```
+
+## 68.11 Maximum Affordable Shares
+
+The most whole shares a user can buy given their cash balance:
+
+```
+max_shares = floor(C / (P × (1 + F)))
+```
+
+## 68.12 Rounding Rules
+
+| Value | Storage precision | Display precision | Rounding method |
+|---|---|---|---|
+| Share quantity | 6 decimal places | 4 decimal places | Truncate |
+| Average cost | 6 decimal places | 2 decimal places | Round half-up |
+| Cash balance | 2 decimal places | 2 decimal places | Round half-up |
+| Transaction fee | 2 decimal places | 2 decimal places | Ceiling |
+| Gain/loss % | 2 decimal places | 2 decimal places | Round half-up |
+| Portfolio value | 2 decimal places | 2 decimal places | Round half-up |
+
+---
+
+# 69. CI/CD Pipeline
+
+Vercel auto-deploy is already configured. This section documents the full pipeline and the recommended GitHub Actions validation workflow.
+
+## 69.1 Vercel Configuration
+
+| Setting | Value |
+|---|---|
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Install command | `npm install` |
+| Node.js version | 20.x |
+| Root directory | `/` (repo root) |
+
+**Automatic deployments:**
+- Push to `main` → production deploy at `https://stockpilot.vercel.app`
+- Push to any other branch or open a PR → preview deploy at `https://stockpilot-git-<branch>.vercel.app`
+- Merge PR to `main` → preview URL redirects to production
+
+## 69.2 Environment Variables in Vercel
+
+All `VITE_*` variables must be added to **Vercel → Project Settings → Environment Variables**:
+
+| Variable | Environments |
+|---|---|
+| `VITE_SUPABASE_URL` | Production, Preview, Development |
+| `VITE_SUPABASE_ANON_KEY` | Production, Preview, Development |
+| `VITE_FINNHUB_API_KEY` | Production, Preview, Development |
+| `VITE_FINNHUB_PROXY_URL` | Production, Preview |
+| `VITE_APP_ENV` | `production` for Production; `development` for others |
+
+## 69.3 GitHub Actions — Pre-Deploy Validation
+
+`.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run type-check
+
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_FINNHUB_API_KEY: ${{ secrets.VITE_FINNHUB_API_KEY }}
+          VITE_FINNHUB_PROXY_URL: ${{ secrets.VITE_FINNHUB_PROXY_URL }}
+          VITE_APP_ENV: production
+```
+
+Required GitHub Secrets (Settings → Secrets and variables → Actions): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_FINNHUB_API_KEY`, `VITE_FINNHUB_PROXY_URL`.
+
+## 69.4 `package.json` Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.ts --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}
+```
+
+## 69.5 Branch Strategy
+
+| Branch | Purpose | Deploy target |
+|---|---|---|
+| `main` | Production-ready code | `stockpilot.vercel.app` |
+| `feature/*` | New features | Preview URL on PR open |
+| `fix/*` | Bug fixes | Preview URL on PR open |
+
+Never commit `.env.local` — it must be listed in `.gitignore`.
+
+## 69.6 Supabase Edge Function Deployment
+
+Edge Functions are deployed separately from the frontend and are **not** auto-deployed by Vercel:
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Link to your project
+supabase link --project-ref your-project-ref
+
+# Deploy the proxy function
+supabase functions deploy finnhub-proxy
+
+# Set Edge Function secrets
+supabase secrets set FINNHUB_API_KEY=your_key
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_key
+```
+
+Re-run `supabase functions deploy finnhub-proxy` any time the Edge Function code changes.
+
+---
+
 *End of StockPilot Product Requirements Document v1.0*
-*Total sections: 60 | Author: Brayden Sun | Last updated: 2026-05-13*
-
-
+*Total sections: 69 | Author: Brayden Sun | Last updated: 2026-05-13*
