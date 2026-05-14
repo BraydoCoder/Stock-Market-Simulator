@@ -1040,7 +1040,168 @@ socket.send(JSON.stringify({ type: 'subscribe', symbol: 'AAPL' }))
 socket.send(JSON.stringify({ type: 'subscribe', symbol: 'TSLA' }))
 ```
 
-## 9.3 WebSocket Strategy
+## 9.3 Sample API Responses
+
+Real response shapes from Finnhub, annotated with which fields StockPilot uses and why.
+
+### `GET /quote?symbol=AAPL`
+
+```json
+{
+  "c":  189.52,   // ← USED: current price — displayed on stock card and detail page
+  "d":  2.34,     // ← USED: price change in dollars — shown in gain/loss display
+  "dp": 1.25,     // ← USED: percent change — displayed as +1.25% with colour coding
+  "h":  191.05,   // ← USED: day high — shown on stock detail page stats
+  "l":  187.88,   // ← USED: day low — shown on stock detail page stats
+  "o":  187.90,   // day open — stored but not currently displayed
+  "pc": 187.18,   // previous close — used to calculate daily change if "d" is null
+  "t":  1715700000 // Unix timestamp of last trade — used to detect stale data
+}
+```
+
+**Fields not used:** `o` (open) — not surfaced in the UI.
+**Null handling:** If `c` is 0 or null, fall back to mock price for that symbol.
+
+---
+
+### `GET /search?q=apple`
+
+```json
+{
+  "count": 4,
+  "result": [
+    {
+      "description": "APPLE INC",    // ← USED: company name displayed in search results
+      "displaySymbol": "AAPL",       // ← USED: ticker shown on stock card
+      "symbol": "AAPL",              // ← USED: internal symbol used for all API calls
+      "type": "Common Stock"         // ← USED: filter — only show "Common Stock", exclude ETFs/funds
+    },
+    {
+      "description": "APPLE HOSPITALITY REIT INC",
+      "displaySymbol": "APLE",
+      "symbol": "APLE",
+      "type": "Common Stock"
+    }
+  ]
+}
+```
+
+**Filtering:** Results are filtered to `type === "Common Stock"` only — ETFs, bonds, and funds are excluded from search results.
+
+---
+
+### `GET /stock/profile2?symbol=AAPL`
+
+```json
+{
+  "country": "US",
+  "currency": "USD",
+  "exchange": "NASDAQ",
+  "finnhubIndustry": "Technology",   // ← USED: sector label and sector filter
+  "ipo": "1980-12-12",
+  "logo": "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/AAPL.png", // ← USED: logo next to stock name
+  "marketCapitalization": 2890000,   // ← USED: displayed on detail page as "Market Cap: $2.89T"
+  "name": "Apple Inc",               // ← USED: full company name
+  "phone": "14089961010",
+  "shareOutstanding": 15441.88,
+  "ticker": "AAPL",                  // ← USED: confirm symbol matches
+  "weburl": "https://www.apple.com/" // not used
+}
+```
+
+**Caching:** Profile data is cached for 24 hours in Supabase — it rarely changes and saves API calls.
+
+---
+
+### `GET /stock/metric?symbol=AAPL&metric=all`
+
+```json
+{
+  "metric": {
+    "52WeekHigh": 199.62,            // ← USED: displayed on stock detail page
+    "52WeekLow": 164.08,             // ← USED: displayed on stock detail page
+    "52WeekHighDate": "2024-07-15",
+    "52WeekLowDate": "2024-04-19",
+    "peBasicExclExtraTTM": 28.4,     // ← USED: P/E ratio on detail page
+    "epsBasicExclExtraAnnual": 6.42, // ← USED: EPS on detail page
+    "dividendYieldIndicatedAnnual": 0.51, // not currently displayed
+    "beta": 1.24                     // not currently displayed
+  },
+  "metricType": "all",
+  "symbol": "AAPL"
+}
+```
+
+**Fields not used:** `beta`, `dividendYieldIndicatedAnnual` — not surfaced in the current UI scope.
+
+---
+
+### `GET /stock/candle?symbol=AAPL&resolution=D&from=1714000000&to=1715700000`
+
+```json
+{
+  "c": [185.20, 186.88, 187.18, 189.52],  // ← USED: closing prices — plotted as the line chart
+  "h": [186.10, 187.90, 188.05, 191.05],  // high — used for OHLC tooltip on hover
+  "l": [184.50, 185.70, 186.40, 187.88],  // low — used for OHLC tooltip on hover
+  "o": [184.80, 186.00, 187.00, 187.90],  // open — used for OHLC tooltip on hover
+  "v": [52340100, 48920300, 61230400, 55430200], // volume — not currently displayed
+  "t": [1714000000, 1714086400, 1714172800, 1714259200], // ← USED: Unix timestamps → x-axis labels
+  "s": "ok"  // status — if "no_data", fall back to mock candle data
+}
+```
+
+**Chart mapping:** `t` array → x-axis labels (formatted as "Apr 25", "Apr 26", etc.), `c` array → y-axis data points for the Chart.js line chart.
+**Resolution values used:** `5` (1D view), `60` (1W view), `D` (1M view).
+
+---
+
+### `GET /company-news?symbol=AAPL&from=2024-04-01&to=2024-04-30`
+
+```json
+[
+  {
+    "category": "company",
+    "datetime": 1714500000,          // ← USED: converted to relative time ("2h ago", "1d ago")
+    "headline": "Apple beats Q2 earnings estimates with strong services growth", // ← USED: headline text
+    "id": 120938471,
+    "image": "https://...",          // not used — images not shown in news feed
+    "related": "AAPL",
+    "source": "Reuters",             // ← USED: source label shown below headline
+    "summary": "Apple Inc reported...", // not used — only headlines shown
+    "url": "https://..."             // ← USED: clicking headline opens article in new tab
+  }
+]
+```
+
+**Display:** Top 5 most recent headlines shown per stock. Only `headline`, `source`, `datetime`, and `url` are used.
+
+---
+
+### WebSocket Trade Tick
+
+Received continuously after subscribing to a symbol:
+
+```json
+{
+  "data": [
+    {
+      "p": 189.52,    // ← USED: trade price — updates priceStore, triggers flash animation
+      "s": "AAPL",   // ← USED: symbol — identifies which stock card to update
+      "t": 1715700123456, // ← USED: timestamp — used to detect stale ticks (>30s old → show warning)
+      "v": 120        // volume of this trade — not used
+    }
+  ],
+  "type": "trade"    // ← USED: only process messages where type === "trade"
+}
+```
+
+**Other message types received:**
+- `type: "ping"` — heartbeat from Finnhub, no action needed
+- `type: "error"` — log and trigger reconnect if message contains auth failure
+
+---
+
+## 9.5 WebSocket Strategy
 
 - WebSocket connection opens when the user navigates to the Stock Browser or Stock Detail page
 - Only subscribe to symbols currently visible on screen (not all 50+ at once)
@@ -1049,7 +1210,7 @@ socket.send(JSON.stringify({ type: 'subscribe', symbol: 'TSLA' }))
 - Incoming price tick updates the in-memory price store, triggers DOM update + flash animation
 - If WebSocket connection drops: attempt reconnect with exponential backoff (1s, 2s, 4s, 8s, max 30s)
 
-## 9.4 Caching Strategy
+## 9.6 Caching Strategy
 
 | Data Type | Cache Location | Cache Duration | Reason |
 |---|---|---|---|
@@ -1059,7 +1220,7 @@ socket.send(JSON.stringify({ type: 'subscribe', symbol: 'TSLA' }))
 | News headlines | In-memory per session | 10 minutes | News refreshes periodically |
 | Search results | In-memory | 60 seconds | Prevent repeated search API calls |
 
-## 9.5 Rate Limit Protection
+## 9.7 Rate Limit Protection
 
 With 30 students and a 60 req/min limit on the free tier, all Finnhub calls are proxied through a single Supabase Edge Function. This means all students share one API key and one rate limit pool.
 
@@ -1074,7 +1235,7 @@ With 30 students and a 60 req/min limit on the free tier, all Finnhub calls are 
 | Lazy chart loading | Historical data only fetched when user opens a stock detail page |
 | Queue + retry | If rate limit is hit, requests are queued and retried after 1 second |
 
-## 9.6 Fallback Strategy
+## 9.8 Fallback Strategy
 
 If the Finnhub API is unavailable or the rate limit is exceeded:
 
@@ -1086,7 +1247,7 @@ If the Finnhub API is unavailable or the rate limit is exceeded:
 6. Trades made during fallback are still recorded normally
 7. When API recovers, app reconnects automatically and banner disappears
 
-## 9.7 Default Stock List
+## 9.9 Default Stock List
 
 The following tickers are pre-loaded as the default stock list:
 
