@@ -4620,7 +4620,1475 @@ Leaderboard is hidden.   [ Show Leaderboard ]
 
 ---
 
+---
+
+# 52. Full SQL Query Reference
+
+Every database query StockPilot executes, with an explanation of what it does and why it's written that way.
+
+## 52.1 Authentication Queries (handled by Supabase Auth — no manual SQL)
+
+Supabase Auth manages sign-up, login, and password reset automatically. After a user signs up, a trigger creates their `users` row:
+
+```sql
+-- Trigger: auto-create users row on auth.users insert
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, display_name, role, xp, level, level_title)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', 'Student'),
+    'student',
+    0,
+    1,
+    'Rookie Pilot'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
+
+## 52.2 Session Queries
+
+### Create a new simulation session (teacher)
+```sql
+INSERT INTO sessions (id, teacher_id, name, starting_balance, start_date, end_date, status, invite_code)
+VALUES (
+  gen_random_uuid(),
+  $teacher_id,
+  $session_name,
+  $starting_balance,
+  $start_date,
+  $end_date,
+  'active',
+  $invite_code   -- 8-char random alphanumeric generated client-side
+)
+RETURNING id, invite_code;
+```
+
+### Look up session by invite code (student joining)
+```sql
+SELECT id, name, starting_balance, status
+FROM sessions
+WHERE invite_code = $invite_code
+  AND status = 'active';
+-- Returns null if code is invalid or session has ended
+```
+
+### Join a session (create session_member row)
+```sql
+INSERT INTO session_members (id, session_id, user_id, cash_balance, starting_balance, portfolio_value, percent_gain, reset_used)
+VALUES (
+  gen_random_uuid(),
+  $session_id,
+  $user_id,
+  $starting_balance,   -- copied from sessions.starting_balance
+  $starting_balance,
+  $starting_balance,   -- initial portfolio_value = all cash, no holdings
+  0.00,
+  FALSE
+)
+RETURNING id;
+```
+
+### End a simulation (teacher)
+```sql
+UPDATE sessions
+SET status = 'ended', end_date = NOW()
+WHERE id = $session_id
+  AND teacher_id = $teacher_id;
+
+-- Also expire all pending orders for this session
+UPDATE orders
+SET status = 'expired'
+WHERE status = 'pending'
+  AND session_member_id IN (
+    SELECT id FROM session_members WHERE session_id = $session_id
+  );
+```
+
+## 52.3 Trade Queries
+
+### Execute a buy (market order) — runs as a transaction
+```sql
+BEGIN;
+
+-- 1. Deduct cash from session_member
+UPDATE session_members
+SET cash_balance = cash_balance - $total_cost
+WHERE id = $session_member_id
+  AND cash_balance >= $total_cost;  -- optimistic lock: fails if balance changed
+
+-- If 0 rows affected, ROLLBACK (race condition — another trade just ran)
+
+-- 2. Upsert holding (insert or update shares + WAVG cost)
+INSERT INTO holdings (id, session_member_id, symbol, shares, avg_cost)
+VALUES (gen_random_uuid(), $session_member_id, $symbol, $shares, $price)
+ON CONFLICT (session_member_id, symbol)
+DO UPDATE SET
+  avg_cost = (
+    (holdings.shares * holdings.avg_cost + EXCLUDED.shares * EXCLUDED.avg_cost)
+    / (holdings.shares + EXCLUDED.shares)
+  ),
+  shares = holdings.shares + EXCLUDED.shares,
+  updated_at = NOW();
+
+-- 3. Log transaction
+INSERT INTO transactions (id, session_member_id, symbol, type, order_type, shares, price, fee, total, executed_at)
+VALUES (
+  gen_random_uuid(), $session_member_id, $symbol, 'buy', 'market',
+  $shares, $price, $fee, $total_cost, NOW()
+);
+
+COMMIT;
+```
+
+### Execute a sell (market order)
+```sql
+BEGIN;
+
+-- 1. Add net proceeds to balance
+UPDATE session_members
+SET cash_balance = cash_balance + $net_proceeds
+WHERE id = $session_member_id;
+
+-- 2. Calculate realized gain before updating holding
+-- realized_gain = (sell_price - avg_cost) * shares_sold
+-- (computed client-side, passed in as $realized_gain)
+
+-- 3. Reduce or remove holding
+UPDATE holdings
+SET shares = shares - $shares_sold,
+    updated_at = NOW()
+WHERE session_member_id = $session_member_id
+  AND symbol = $symbol;
+
+-- Remove holding row if shares reach zero
+DELETE FROM holdings
+WHERE session_member_id = $session_member_id
+  AND symbol = $symbol
+  AND shares <= 0.000001;  -- epsilon for floating point safety
+
+-- 4. Log transaction with realized gain
+INSERT INTO transactions (id, session_member_id, symbol, type, order_type, shares, price, fee, total, realized_gain, executed_at)
+VALUES (
+  gen_random_uuid(), $session_member_id, $symbol, 'sell', 'market',
+  $shares_sold, $sell_price, $fee, $net_proceeds, $realized_gain, NOW()
+);
+
+COMMIT;
+```
+
+### Place a limit or stop-loss order
+```sql
+INSERT INTO orders (id, session_member_id, symbol, type, order_type, shares, limit_price, status, created_at)
+VALUES (
+  gen_random_uuid(),
+  $session_member_id,
+  $symbol,
+  $side,          -- 'buy' or 'sell'
+  $order_type,    -- 'limit' or 'stop_loss'
+  $shares,
+  $limit_price,
+  'pending',
+  NOW()
+)
+RETURNING id;
+```
+
+### Cancel a pending order
+```sql
+UPDATE orders
+SET status = 'cancelled'
+WHERE id = $order_id
+  AND session_member_id = $session_member_id
+  AND status = 'pending';
+```
+
+### Check and execute pending orders on price tick
+```sql
+-- Called every time a new price arrives for $symbol
+-- Fetch all matching pending orders
+SELECT o.*, sm.cash_balance, h.shares AS owned_shares, h.avg_cost
+FROM orders o
+JOIN session_members sm ON sm.id = o.session_member_id
+LEFT JOIN holdings h ON h.session_member_id = o.session_member_id AND h.symbol = o.symbol
+WHERE o.symbol = $symbol
+  AND o.status = 'pending'
+  AND (
+    -- Buy limit: price dropped to or below limit
+    (o.type = 'buy'  AND o.order_type = 'limit'     AND $current_price <= o.limit_price)
+    OR
+    -- Sell limit: price rose to or above limit
+    (o.type = 'sell' AND o.order_type = 'limit'     AND $current_price >= o.limit_price)
+    OR
+    -- Stop-loss: price dropped to or below stop
+    (o.type = 'sell' AND o.order_type = 'stop_loss' AND $current_price <= o.limit_price)
+  );
+-- For each row returned: execute as market order, then set status = 'filled', filled_at = NOW()
+```
+
+## 52.4 Portfolio Queries
+
+### Load full portfolio for a user in a session
+```sql
+SELECT
+  h.symbol,
+  h.shares,
+  h.avg_cost,
+  sm.cash_balance,
+  sm.portfolio_value,
+  sm.percent_gain,
+  sm.starting_balance
+FROM holdings h
+JOIN session_members sm ON sm.id = h.session_member_id
+WHERE sm.user_id = $user_id
+  AND sm.session_id = $session_id
+ORDER BY h.symbol;
+```
+
+### Update portfolio value after price change
+```sql
+-- Called client-side after recalculating total value
+UPDATE session_members
+SET
+  portfolio_value = $new_total_value,
+  percent_gain    = (($new_total_value - starting_balance) / starting_balance) * 100
+WHERE id = $session_member_id;
+```
+
+### Portfolio reset (student uses their one reset)
+```sql
+BEGIN;
+
+-- Delete all holdings
+DELETE FROM holdings WHERE session_member_id = $session_member_id;
+
+-- Cancel all pending orders
+UPDATE orders SET status = 'cancelled'
+WHERE session_member_id = $session_member_id AND status = 'pending';
+
+-- Restore balance and mark reset as used
+UPDATE session_members
+SET cash_balance    = starting_balance,
+    portfolio_value = starting_balance,
+    percent_gain    = 0.00,
+    reset_used      = TRUE
+WHERE id = $session_member_id
+  AND reset_used = FALSE;  -- only succeeds once
+
+COMMIT;
+```
+
+## 52.5 Leaderboard Query
+
+### Fetch full leaderboard for a session (with tiebreakers)
+```sql
+SELECT
+  sm.id,
+  sm.user_id,
+  u.display_name,
+  u.level,
+  u.level_title,
+  sm.portfolio_value,
+  sm.percent_gain,
+  COUNT(t.id) AS total_trades,
+  sm.joined_at,
+  RANK() OVER (
+    ORDER BY
+      sm.portfolio_value DESC,
+      sm.percent_gain DESC,
+      COUNT(t.id) ASC,
+      sm.joined_at ASC
+  ) AS rank
+FROM session_members sm
+JOIN users u ON u.id = sm.user_id
+LEFT JOIN transactions t ON t.session_member_id = sm.id
+WHERE sm.session_id = $session_id
+GROUP BY sm.id, sm.user_id, u.display_name, u.level, u.level_title,
+         sm.portfolio_value, sm.percent_gain, sm.joined_at
+ORDER BY rank ASC;
+```
+
+**Why RANK() OVER?** PostgreSQL's window function `RANK()` applies tiebreakers in order without requiring a subquery. The `ORDER BY` clause inside `OVER()` matches the tiebreaker hierarchy from Section 39: portfolio value → % gain → fewer trades → earlier join.
+
+## 52.6 Transaction History Queries
+
+### Load transaction history for current simulation
+```sql
+SELECT
+  t.id,
+  t.symbol,
+  t.type,
+  t.order_type,
+  t.shares,
+  t.price,
+  t.fee,
+  t.total,
+  t.realized_gain,
+  t.executed_at
+FROM transactions t
+WHERE t.session_member_id = $session_member_id
+ORDER BY t.executed_at DESC;
+-- All trades for this simulation period; reset on new simulation
+```
+
+### Sorted by trade value (largest first)
+```sql
+SELECT * FROM transactions
+WHERE session_member_id = $session_member_id
+ORDER BY total DESC;
+```
+
+### Transaction summary stats (for profile page)
+```sql
+SELECT
+  COUNT(*)                                         AS total_trades,
+  COUNT(*) FILTER (WHERE type = 'buy')             AS buy_count,
+  COUNT(*) FILTER (WHERE type = 'sell')            AS sell_count,
+  SUM(fee)                                         AS total_fees_paid,
+  SUM(realized_gain) FILTER (WHERE type = 'sell') AS total_realized_gain
+FROM transactions
+WHERE session_member_id = $session_member_id;
+```
+
+## 52.7 Achievement Queries
+
+### Load all achievements with unlock status for a user
+```sql
+SELECT
+  a.id,
+  a.name,
+  a.description,
+  a.badge_icon,
+  a.xp_reward,
+  a.is_hidden,
+  ua.unlocked_at
+FROM achievements a
+LEFT JOIN user_achievements ua
+  ON ua.achievement_id = a.id
+  AND ua.user_id = $user_id
+ORDER BY ua.unlocked_at ASC NULLS LAST, a.id;
+-- Unlocked achievements first (sorted by unlock time), then locked ones
+```
+
+### Unlock an achievement and award XP (runs as transaction)
+```sql
+BEGIN;
+
+-- Insert achievement record
+INSERT INTO user_achievements (id, user_id, achievement_id, unlocked_at)
+VALUES (gen_random_uuid(), $user_id, $achievement_id, NOW())
+ON CONFLICT (user_id, achievement_id) DO NOTHING;
+-- ON CONFLICT prevents double-awarding if race condition occurs
+
+-- Add XP to user
+UPDATE users
+SET xp = xp + $xp_reward
+WHERE id = $user_id;
+
+-- Recalculate level (done client-side using getLevelFromXp(), then:)
+UPDATE users
+SET level = $new_level, level_title = $new_title
+WHERE id = $user_id AND level < $new_level;
+-- Only updates if level actually increased
+
+COMMIT;
+```
+
+## 52.8 Price Alert Queries
+
+### Create a price alert
+```sql
+INSERT INTO price_alerts (id, user_id, symbol, alert_type, threshold_price, triggered)
+VALUES (gen_random_uuid(), $user_id, $symbol, $alert_type, $threshold_price, FALSE)
+RETURNING id;
+```
+
+### Check alerts on price tick
+```sql
+SELECT id, user_id, symbol, alert_type, threshold_price
+FROM price_alerts
+WHERE symbol = $symbol
+  AND triggered = FALSE
+  AND (
+    (alert_type = 'above' AND $current_price >= threshold_price)
+    OR
+    (alert_type = 'below' AND $current_price <= threshold_price)
+  );
+-- For each result: fire notification, then mark as triggered
+```
+
+### Mark alert as triggered
+```sql
+UPDATE price_alerts
+SET triggered = TRUE
+WHERE id = $alert_id;
+```
+
+## 52.9 Teacher Analytics Queries
+
+### Per-student engagement summary
+```sql
+SELECT
+  u.display_name,
+  u.email,
+  u.xp,
+  u.level,
+  sm.portfolio_value,
+  sm.percent_gain,
+  sm.reset_used,
+  COUNT(t.id)                 AS total_trades,
+  MAX(t.executed_at)          AS last_trade_at,
+  COUNT(ua.id)                AS badges_unlocked
+FROM session_members sm
+JOIN users u ON u.id = sm.user_id
+LEFT JOIN transactions t ON t.session_member_id = sm.id
+LEFT JOIN user_achievements ua ON ua.user_id = sm.user_id
+WHERE sm.session_id = $session_id
+GROUP BY u.display_name, u.email, u.xp, u.level,
+         sm.portfolio_value, sm.percent_gain, sm.reset_used
+ORDER BY sm.portfolio_value DESC;
+```
+
+### Most traded stocks across the class
+```sql
+SELECT
+  symbol,
+  COUNT(*)        AS trade_count,
+  SUM(shares)     AS total_shares_traded,
+  SUM(total)      AS total_volume
+FROM transactions t
+JOIN session_members sm ON sm.id = t.session_member_id
+WHERE sm.session_id = $session_id
+GROUP BY symbol
+ORDER BY trade_count DESC
+LIMIT 10;
+```
+
+### Trade volume per simulated day
+```sql
+SELECT
+  DATE_TRUNC('day', executed_at) AS trade_day,
+  COUNT(*)                        AS trades_count
+FROM transactions t
+JOIN session_members sm ON sm.id = t.session_member_id
+WHERE sm.session_id = $session_id
+GROUP BY trade_day
+ORDER BY trade_day ASC;
+```
+
+---
+
+# 53. Mock Data Specification
+
+The fallback dataset stored at `public/mock-data/stocks.json`. Used when Finnhub is unavailable.
+
+## 53.1 File Structure
+
+```json
+{
+  "generated_at": "2026-05-13T00:00:00Z",
+  "stocks": [ ...37 stock objects... ]
+}
+```
+
+## 53.2 Stock Object Schema
+
+```json
+{
+  "symbol": "AAPL",
+  "name": "Apple Inc.",
+  "sector": "Technology",
+  "price": 189.52,
+  "change": 2.34,
+  "changePct": 1.25,
+  "open": 187.18,
+  "high": 190.41,
+  "low": 186.95,
+  "prevClose": 187.18,
+  "week52High": 199.62,
+  "week52Low": 164.08,
+  "marketCap": "2.89T",
+  "logoUrl": "https://logo.clearbit.com/apple.com",
+  "candles": {
+    "1D": [ { "t": 1715587800, "o": 187.18, "h": 190.41, "l": 186.95, "c": 189.52, "v": 52341200 }, "..." ],
+    "1W": [ "...7 daily candles..." ],
+    "1M": [ "...30 daily candles..." ]
+  }
+}
+```
+
+## 53.3 All 37 Default Stocks (Mock Prices)
+
+| Symbol | Name | Sector | Mock Price | Change | Change% |
+|---|---|---|---|---|---|
+| AAPL | Apple Inc. | Technology | 189.52 | +2.34 | +1.25% |
+| MSFT | Microsoft Corp. | Technology | 378.90 | +3.28 | +0.87% |
+| GOOGL | Alphabet Inc. | Technology | 165.30 | +0.54 | +0.33% |
+| AMZN | Amazon.com Inc. | Technology | 182.10 | -1.00 | -0.55% |
+| META | Meta Platforms | Technology | 492.60 | +9.11 | +1.88% |
+| NVDA | NVIDIA Corp. | Technology | 875.40 | +29.02 | +3.42% |
+| TSLA | Tesla Inc. | Technology | 214.80 | -5.08 | -2.31% |
+| AMD | Advanced Micro Devices | Technology | 162.30 | +4.87 | +3.09% |
+| INTC | Intel Corp. | Technology | 31.40 | -0.62 | -1.94% |
+| ORCL | Oracle Corp. | Technology | 122.50 | +1.10 | +0.91% |
+| JNJ | Johnson & Johnson | Healthcare | 152.80 | -0.90 | -0.59% |
+| PFE | Pfizer Inc. | Healthcare | 27.60 | +0.34 | +1.25% |
+| UNH | UnitedHealth Group | Healthcare | 492.10 | +5.70 | +1.17% |
+| ABBV | AbbVie Inc. | Healthcare | 163.40 | -1.20 | -0.73% |
+| MRK | Merck & Co. | Healthcare | 128.90 | +0.88 | +0.69% |
+| JPM | JPMorgan Chase | Finance | 196.40 | -0.24 | -0.12% |
+| BAC | Bank of America | Finance | 39.20 | +0.48 | +1.24% |
+| GS | Goldman Sachs | Finance | 445.60 | -3.20 | -0.71% |
+| V | Visa Inc. | Finance | 278.90 | +2.10 | +0.76% |
+| MA | Mastercard Inc. | Finance | 462.30 | +3.80 | +0.83% |
+| WMT | Walmart Inc. | Consumer | 67.40 | +0.54 | +0.81% |
+| TGT | Target Corp. | Consumer | 155.20 | -1.80 | -1.15% |
+| MCD | McDonald's Corp. | Consumer | 289.50 | +1.20 | +0.42% |
+| SBUX | Starbucks Corp. | Consumer | 79.80 | -0.90 | -1.12% |
+| NKE | Nike Inc. | Consumer | 94.60 | +0.70 | +0.74% |
+| DIS | Walt Disney Co. | Consumer | 112.30 | +1.50 | +1.35% |
+| XOM | Exxon Mobil | Energy | 114.20 | +0.80 | +0.71% |
+| CVX | Chevron Corp. | Energy | 158.70 | -1.10 | -0.69% |
+| COP | ConocoPhillips | Energy | 119.40 | +2.30 | +1.97% |
+| BA | Boeing Co. | Industrials | 188.90 | -2.40 | -1.26% |
+| CAT | Caterpillar Inc. | Industrials | 362.10 | +4.50 | +1.26% |
+| GE | GE Aerospace | Industrials | 162.80 | +1.90 | +1.18% |
+| T | AT&T Inc. | Telecom | 18.20 | -0.10 | -0.55% |
+| VZ | Verizon Communications | Telecom | 41.30 | +0.20 | +0.49% |
+| NFLX | Netflix Inc. | Technology | 628.40 | +8.90 | +1.44% |
+| PYPL | PayPal Holdings | Finance | 62.10 | -0.80 | -1.27% |
+| UBER | Uber Technologies | Technology | 72.40 | +1.30 | +1.83% |
+
+---
+
+# 54. Security Threat Model
+
+## 54.1 XSS (Cross-Site Scripting)
+
+**Threat:** An attacker injects malicious JavaScript into the app that runs in other users' browsers — stealing session tokens, redirecting users, or defacing the UI.
+
+**Attack vectors in StockPilot:**
+- User-supplied display names rendered in the leaderboard and announcements
+- Teacher-supplied announcement text rendered for all students
+- Stock news headlines pulled from Finnhub and displayed
+
+**Mitigations:**
+
+| Location | Mitigation |
+|---|---|
+| All user text rendered in DOM | Always inserted via `textContent` or `innerText`, never `innerHTML`. Never use `element.innerHTML = userInput` |
+| News headlines from Finnhub | Rendered as `textContent` only — links open via `window.open(url, '_blank')` with the raw URL, never rendered as HTML |
+| Announcement text | Sanitised on the client before display using a whitelist approach (plain text only, no HTML tags allowed) |
+| Supabase data | Supabase returns JSON strings — they are never eval'd or inserted as HTML |
+
+**CSP Header:** Add a Content Security Policy via Vercel's `vercel.json`:
+```json
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://ws.finnhub.io https://finnhub.io;" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 54.2 CSRF (Cross-Site Request Forgery)
+
+**Threat:** A malicious site tricks an authenticated user's browser into making requests to StockPilot (e.g. placing trades, resetting portfolio).
+
+**Why StockPilot is largely protected:**
+- All state-changing operations go through Supabase's REST API, which requires a valid `Authorization: Bearer <JWT>` header
+- Browsers do not automatically send custom headers on cross-origin requests (CORS blocks this)
+- The JWT is stored in memory (Supabase's `localStorage`-based session), not in a cookie — so `SameSite` is irrelevant, and there is no cookie to forge
+
+**Residual risk:** None significant for this use case. The JWT itself cannot be stolen via CSRF.
+
+---
+
+## 54.3 SQL Injection
+
+**Threat:** Attacker crafts input that alters the SQL query being executed.
+
+**Why StockPilot is protected:**
+- All database access goes through Supabase's PostgREST API or the Supabase JS client
+- Both use **parameterised queries** internally — user input is never concatenated into SQL strings
+- No raw SQL is constructed on the client side; even the Edge Function uses Deno's `fetch` to hit the Finnhub REST API, not a database
+
+**No manual SQL construction anywhere in the frontend codebase.**
+
+---
+
+## 54.4 Authentication Bypass
+
+**Threat:** Attacker accesses protected routes or data without a valid session.
+
+**Mitigations:**
+
+| Layer | Protection |
+|---|---|
+| Client-side routing | `router.js` checks `supabase.auth.getSession()` before rendering any protected route. Redirect to `/auth` if no session |
+| Supabase RLS | Every table has row-level security. Even if a user bypasses client routing and calls Supabase directly (e.g. via Postman), they can only see their own data |
+| Admin route | `/admin` checks `user.role === 'teacher'` client-side AND RLS policies block all teacher-only writes for non-teachers at the database level |
+| JWT expiry | Supabase JWTs expire after 1 hour; the client uses `onAuthStateChange` to automatically refresh the token silently |
+| Brute force | Supabase Auth applies a default rate limit of 6 login attempts per hour per IP |
+
+---
+
+## 54.5 Insecure Direct Object Reference (IDOR)
+
+**Threat:** User A modifies their request to act on User B's data (e.g. cancel User B's order, reset User B's portfolio).
+
+**Protection:** All Supabase RLS policies are defined in §43. Every `UPDATE` and `DELETE` policy includes a check that the `user_id` or `teacher_id` matches `auth.uid()`. A student cannot modify another student's holdings, orders, or balance even by crafting a direct Supabase API call with their own valid JWT.
+
+---
+
+## 54.6 API Key Exposure
+
+**Threat:** The Finnhub API key is visible in client-side JavaScript and can be stolen and abused.
+
+**Mitigation:** The key is stored as a Supabase Edge Function secret (`FINNHUB_API_KEY`) and never referenced in the frontend bundle. The only exception is `VITE_FINNHUB_WS_KEY` used for the WebSocket — this is the free-tier public key and its exposure is acceptable for a school project (the key has no billing implications and Finnhub's free tier is already rate-limited).
+
+For production hardening: proxy the WebSocket through a self-hosted WebSocket relay server.
+
+---
+
+## 54.7 Denial of Service (Rate Limit Abuse)
+
+**Threat:** A student (or attacker) floods the Edge Function with requests, exhausting the Finnhub rate limit for everyone in the class.
+
+**Mitigations:**
+- Edge Function caches responses — repeated identical requests return cached data without hitting Finnhub
+- Supabase Edge Functions have built-in rate limiting per IP
+- Client-side debouncing (300ms on search) prevents rapid-fire requests
+- WebSocket subscriptions are managed per-page (not a flood of subscriptions)
+
+---
+
+## 54.8 Data Privacy
+
+**Threat:** Student financial data (portfolio, trade history) is visible to other students.
+
+**Protection:**
+- Holdings and transaction history are private — only readable by the owning student and their teacher (via RLS)
+- The leaderboard exposes only: display name, level title, total portfolio value, and % gain — no individual stock holdings or trade details
+- Teachers are trusted actors in this school context
+
+---
+
+# 55. Component Specifications (Continued)
+
+## 55.1 PortfolioTable
+
+**File:** `src/components/PortfolioTable.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `holdings` | array | Array of holding objects from `portfolioState.holdings` |
+| `onQuickSell` | function | Called with `symbol` when Quick Sell is clicked |
+| `isLoading` | boolean | Shows skeleton rows when true |
+| `stale` | boolean | Shows stale price indicator on each row |
+
+**States:**
+- `sortKey` — which column is sorted (`'symbol'`, `'value'`, `'gain'`, `'gainPct'`)
+- `sortDir` — `'asc'` or `'desc'`
+- `expandedRow` — symbol of expanded row (shows extra detail inline) or `null`
+
+**DOM Structure:**
+```html
+<div class="portfolio-table-wrapper">
+  <table class="portfolio-table">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="sort('symbol')">Symbol</th>
+        <th>Shares</th>
+        <th>Avg Cost</th>
+        <th class="sortable" onclick="sort('price')">Price</th>
+        <th class="sortable" onclick="sort('value')">Value</th>
+        <th class="sortable" onclick="sort('gainPct')">Unrealized G/L</th>
+        <th></th>  <!-- Quick sell button -->
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Skeleton rows when isLoading -->
+      <!-- Holding rows -->
+      <tr class="holding-row [expanded]" onclick="toggleExpand(symbol)">
+        <td>
+          <div class="flex items-center gap-2">
+            <img src="{logoUrl}" class="w-6 h-6" />
+            <span class="font-semibold text-white">{symbol}</span>
+          </div>
+        </td>
+        <td class="tabular-nums">{shares}</td>
+        <td class="tabular-nums text-slate-400">PC${avgCost}</td>
+        <td class="tabular-nums [flash class]">
+          PC${price}
+          {if stale} <span class="stale-badge">⚠</span> {/if}
+        </td>
+        <td class="tabular-nums font-semibold">PC${marketValue}</td>
+        <td>
+          <span class="gain-badge [gain|loss]">
+            {gainPct >= 0 ? '+' : ''}{gainPct}%
+            <span class="text-xs">(PC${gainDollar})</span>
+          </span>
+        </td>
+        <td>
+          <button class="quick-sell-btn" onclick="stopPropagation(); onQuickSell(symbol)">
+            Sell
+          </button>
+        </td>
+      </tr>
+      <!-- Expanded row detail (conditionally rendered) -->
+      {if expandedRow === symbol}
+      <tr class="expanded-detail-row">
+        <td colspan="7">
+          <div class="expanded-content">
+            <span>Realized G/L: PC${realizedGain}</span>
+            <span>Sector: {sector}</span>
+            <span>Held since: {firstPurchaseDate}</span>
+          </div>
+        </td>
+      </tr>
+      {/if}
+    </tbody>
+  </table>
+</div>
+```
+
+**CSS:**
+```css
+.portfolio-table-wrapper { @apply overflow-x-auto rounded-xl border border-[#2A3245]; }
+.portfolio-table         { @apply w-full text-sm; }
+.portfolio-table thead tr { @apply bg-[#1E2535]; }
+.portfolio-table th       { @apply px-4 py-3 text-left text-xs font-semibold
+                                   uppercase tracking-wider text-slate-500; }
+.portfolio-table th.sortable { @apply cursor-pointer hover:text-white transition-colors; }
+.holding-row   { @apply border-b border-[#2A3245] cursor-pointer
+                        hover:bg-white/[0.02] transition-colors; }
+.holding-row td { @apply px-4 py-3; }
+.stale-badge   { @apply text-amber-400 text-xs ml-1; }
+.quick-sell-btn { @apply px-3 py-1 rounded-lg text-xs font-semibold
+                         text-red-400 border border-red-500/30
+                         hover:bg-red-500/10 transition-colors; }
+.gain-badge.gain { @apply text-green-400; }
+.gain-badge.loss { @apply text-red-400; }
+.expanded-detail-row { @apply bg-[#0D0F14]; }
+.expanded-content    { @apply px-4 py-3 flex gap-8 text-sm text-slate-400; }
+```
+
+---
+
+## 55.2 LeaderboardRow
+
+**File:** `src/components/LeaderboardRow.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `rank` | number | Current rank position |
+| `prevRank` | number | Previous rank (for change indicator) |
+| `displayName` | string | Student's display name |
+| `levelTitle` | string | e.g. "Market Analyst" |
+| `badgeIcon` | string | Emoji or icon identifier for top badge |
+| `portfolioValue` | number | Total portfolio value |
+| `percentGain` | number | % gain from starting balance |
+| `isCurrentUser` | boolean | Highlights this row if true |
+| `reactions` | object | `{ '👍': 12, '🚀': 8, '😮': 5, '😬': 2, '🔥': 3 }` |
+| `userReaction` | string | Which emoji the current user reacted with, or null |
+| `onReact` | function | Called with emoji when user reacts |
+
+**Rank Change Indicator Logic:**
+```js
+const rankChange = prevRank - rank  // positive = moved up, negative = moved down
+const indicator  = rankChange > 0 ? `▲ ${rankChange}`
+                 : rankChange < 0 ? `▼ ${Math.abs(rankChange)}`
+                 : ''
+const indicatorClass = rankChange > 0 ? 'text-green-400'
+                     : rankChange < 0 ? 'text-red-400'
+                     : ''
+```
+
+**DOM Structure:**
+```html
+<tr class="lb-row [isCurrentUser ? 'lb-row-self' : '']">
+  <td class="lb-rank">
+    {rank <= 3
+      ? ['🥇','🥈','🥉'][rank-1]
+      : rank}
+    {if rankChange !== 0}
+      <span class="rank-change {indicatorClass}">{indicator}</span>
+    {/if}
+  </td>
+  <td class="lb-name">
+    <div class="flex items-center gap-2">
+      <span class="badge-icon">{badgeIcon}</span>
+      <div>
+        <div class="text-white font-semibold">
+          {displayName}
+          {if isCurrentUser} <span class="text-blue-400 text-xs">★ You</span> {/if}
+        </div>
+        <div class="text-slate-500 text-xs">{levelTitle}</div>
+      </div>
+    </div>
+  </td>
+  <td class="lb-value tabular-nums font-semibold text-white">PC${portfolioValue}</td>
+  <td class="lb-gain">
+    <span class="{percentGain >= 0 ? 'text-green-400' : 'text-red-400'} font-semibold">
+      {percentGain >= 0 ? '+' : ''}{percentGain}%
+    </span>
+  </td>
+  <td class="lb-reactions">
+    {['👍','🚀','😮','😬','🔥'].map(emoji =>
+      <button
+        class="reaction-btn {userReaction === emoji ? 'reacted' : ''}"
+        onclick="onReact(emoji)">
+        {emoji} <span class="reaction-count">{reactions[emoji] || 0}</span>
+      </button>
+    )}
+  </td>
+</tr>
+```
+
+**CSS:**
+```css
+.lb-row      { @apply border-b border-[#2A3245] transition-colors; }
+.lb-row-self { @apply bg-blue-500/5 border-blue-500/20; }
+.lb-rank     { @apply px-4 py-3 text-center font-bold text-white w-16; }
+.lb-name     { @apply px-4 py-3; }
+.lb-value    { @apply px-4 py-3 text-right; }
+.lb-gain     { @apply px-4 py-3 text-right; }
+.lb-reactions { @apply px-4 py-3; }
+.rank-change { @apply text-xs font-normal ml-1; }
+.reaction-btn { @apply px-1.5 py-0.5 rounded text-xs hover:bg-white/5
+                        transition-colors flex items-center gap-0.5; }
+.reaction-btn.reacted { @apply bg-white/10 ring-1 ring-white/20; }
+.reaction-count { @apply text-slate-500; }
+```
+
+---
+
+## 55.3 Modal
+
+**File:** `src/components/Modal.js`
+
+A generic reusable modal used for trade confirmations, portfolio reset confirmation, account deletion, and add price alert.
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `isOpen` | boolean | Controls visibility |
+| `title` | string | Modal heading |
+| `onClose` | function | Called on backdrop click or ✕ button |
+| `children` | HTML/nodes | Modal body content |
+| `footer` | HTML/nodes | Optional footer with action buttons |
+| `size` | `'sm'`\|`'md'`\|`'lg'` | Width variant (default `'md'`) |
+
+**DOM Structure:**
+```html
+{if isOpen}
+<div class="modal-backdrop" onclick="onClose()">
+  <div class="modal-box modal-{size}" onclick="stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">{title}</h2>
+      <button class="modal-close" onclick="onClose()">✕</button>
+    </div>
+    <div class="modal-body">
+      {children}
+    </div>
+    {if footer}
+    <div class="modal-footer">
+      {footer}
+    </div>
+    {/if}
+  </div>
+</div>
+{/if}
+```
+
+**CSS:**
+```css
+.modal-backdrop { @apply fixed inset-0 z-50 flex items-center justify-center
+                         bg-black/70 backdrop-blur-sm animate-fade-in; }
+.modal-box      { @apply bg-[#161B26] border border-[#2A3245] rounded-2xl
+                         shadow-2xl w-full mx-4 animate-scale-in; }
+.modal-sm       { @apply max-w-sm; }
+.modal-md       { @apply max-w-md; }
+.modal-lg       { @apply max-w-lg; }
+.modal-header   { @apply flex items-center justify-between px-6 pt-6 pb-4
+                         border-b border-[#2A3245]; }
+.modal-title    { @apply font-semibold text-white text-lg; }
+.modal-close    { @apply text-slate-500 hover:text-white transition-colors p-1; }
+.modal-body     { @apply px-6 py-5; }
+.modal-footer   { @apply px-6 pb-6 pt-4 flex justify-end gap-3
+                         border-t border-[#2A3245]; }
+```
+
+---
+
+## 55.4 MarketEventBanner
+
+**File:** `src/components/MarketEventBanner.js`
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `event` | object | `{ type, description, explanation }` |
+| `onDismiss` | function | Called when user clicks Dismiss |
+
+**States:**
+- `showExplanation` — boolean, toggles the "What happened?" explanation card
+- `timeRemaining` — countdown in seconds until auto-dismiss (starts at 60)
+
+**DOM Structure:**
+```html
+<div class="event-banner event-{type}" role="alert">
+  <div class="event-icon">{iconByType}</div>
+  <div class="event-content">
+    <div class="event-title">MARKET EVENT: {eventName}</div>
+    <div class="event-description">{description}</div>
+    {if showExplanation}
+    <div class="event-explanation">
+      <span class="text-slate-400 text-xs">💡 What happened?</span>
+      <p class="text-sm text-slate-300 mt-1">{explanation}</p>
+    </div>
+    {/if}
+  </div>
+  <div class="event-actions">
+    <button class="event-explain-btn" onclick="toggleExplanation()">
+      {showExplanation ? 'Hide' : 'What happened?'}
+    </button>
+    <button class="event-dismiss-btn" onclick="onDismiss()">
+      Dismiss ({timeRemaining}s)
+    </button>
+  </div>
+</div>
+```
+
+**CSS:**
+```css
+.event-banner {
+  @apply w-full px-6 py-4 flex items-start gap-4
+         border-b animate-slide-down;
+}
+.event-banner.flash_crash    { @apply bg-red-900/30    border-red-500/40; }
+.event-banner.bull_run       { @apply bg-green-900/20  border-green-500/40; }
+.event-banner.earnings_beat  { @apply bg-blue-900/20   border-blue-500/40; }
+.event-banner.earnings_miss  { @apply bg-red-900/20    border-red-500/30; }
+.event-banner.sector_selloff { @apply bg-orange-900/20 border-orange-500/40; }
+.event-banner.sector_rally   { @apply bg-emerald-900/20 border-emerald-500/40; }
+.event-title    { @apply font-bold text-white text-sm uppercase tracking-wide; }
+.event-description { @apply text-slate-300 text-sm mt-0.5; }
+.event-explanation { @apply mt-2 p-3 bg-black/20 rounded-lg; }
+.event-explain-btn { @apply text-xs text-blue-400 hover:text-blue-300 underline; }
+.event-dismiss-btn { @apply text-xs text-slate-400 hover:text-white ml-3; }
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+```
+
+---
+
+# 56. WebSocket Message Formats
+
+## 56.1 Subscription Messages (Client → Finnhub)
+
+### Subscribe to a symbol
+```json
+{ "type": "subscribe", "symbol": "AAPL" }
+```
+
+### Unsubscribe from a symbol
+```json
+{ "type": "unsubscribe", "symbol": "AAPL" }
+```
+
+Multiple subscriptions are sent as individual messages — one per symbol.
+
+## 56.2 Incoming Messages (Finnhub → Client)
+
+### Trade tick (price update)
+```json
+{
+  "type": "trade",
+  "data": [
+    {
+      "s": "AAPL",
+      "p": 189.67,
+      "t": 1715589234567,
+      "v": 1200,
+      "c": null
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `s` | string | Ticker symbol |
+| `p` | number | Last trade price |
+| `t` | number | Unix timestamp in milliseconds |
+| `v` | number | Volume of this trade |
+| `c` | array/null | Trade conditions (usually null for stocks) |
+
+One message can contain multiple ticks in the `data` array. StockPilot processes all of them in a single loop.
+
+### Ping (keep-alive from Finnhub)
+```json
+{ "type": "ping" }
+```
+
+StockPilot does not need to respond to pings — they are sent by Finnhub to keep the connection alive.
+
+### Error message
+```json
+{ "type": "error", "msg": "Invalid token." }
+```
+
+On error: log to console, set `webSocketError = true`, show the API fallback banner, switch to mock data.
+
+## 56.3 StockPilot's Internal Price Store Update
+
+When a trade tick arrives for symbol `s` with price `p`:
+
+```js
+function handleTick(symbol, price) {
+  const prev = priceStore.get(symbol)
+  if (!prev) return  // symbol not in our list, ignore
+
+  const change    = price - prev.prevClose
+  const changePct = (change / prev.prevClose) * 100
+  const direction = price > prev.price ? 'up' : price < prev.price ? 'down' : 'flat'
+
+  priceStore.set(symbol, { ...prev, price, change, changePct, direction, updatedAt: Date.now() })
+
+  // Notify all subscribers (stock cards, trade panel, portfolio rows)
+  priceEventBus.emit(symbol, { price, change, changePct, direction })
+}
+```
+
+## 56.4 Reconnect Logic
+
+```js
+let reconnectDelay = 1000  // ms
+
+function scheduleReconnect(onTick) {
+  console.log(`[WS] Reconnecting in ${reconnectDelay}ms...`)
+  setTimeout(() => {
+    createPriceSocket(onTick)
+    reconnectDelay = Math.min(reconnectDelay * 2, 30_000)  // exponential backoff, max 30s
+  }, reconnectDelay)
+}
+
+// Reset delay on successful connection
+socket.onopen = () => {
+  reconnectDelay = 1000
+  // Re-subscribe to all currently visible symbols
+  activeSubscriptions.forEach(sym => socket.send(JSON.stringify({ type: 'subscribe', symbol: sym })))
+}
+```
+
+---
+
+# 57. localStorage Schema
+
+Everything stored in `localStorage` is settings-only. All portfolio and account data lives in Supabase.
+
+## 57.1 All Keys
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `sp_theme` | `'dark'`\|`'light'` | `'dark'` | User's selected colour theme |
+| `sp_music_vol` | number (0–1) | `0.4` | Music volume as a decimal |
+| `sp_sfx_vol` | number (0–1) | `0.7` | Sound effects volume |
+| `sp_muted` | boolean | `false` | Global mute state |
+| `sp_lb_hidden` | boolean | `false` | Whether this student has hidden the leaderboard |
+| `sp_stock_view` | `'table'`\|`'cards'` | `'table'` | Preferred stock browser view mode |
+| `sp_sort_key` | string | `'changePct'` | Last used sort key in stock browser |
+| `sp_sort_dir` | `'asc'`\|`'desc'` | `'desc'` | Last used sort direction |
+| `sp_sector_filter` | string | `'all'` | Last used sector filter |
+| `sp_tutorial_done` | boolean | `false` | Whether the tutorial has been completed (also stored in Supabase, mirrored here for instant check on load) |
+| `sp_notif_count` | number | `0` | Unread notification count shown on bell |
+| `sp_price_cache` | JSON string | `'{}'` | Last known prices (used for stale display during fallback) |
+| `sp_price_cache_ts` | number | `0` | Timestamp when price cache was last written |
+
+## 57.2 localStorage Limits
+
+Browser `localStorage` has a ~5MB limit per origin. StockPilot's usage is minimal:
+
+| Key | Estimated Size |
+|---|---|
+| All settings (theme, vol, etc.) | < 200 bytes |
+| Price cache (37 stocks) | ~4KB |
+| **Total** | **< 5KB** |
+
+Well within the limit. No risk of `QuotaExceededError`.
+
+## 57.3 Reading and Writing
+
+All localStorage access is centralised in `src/utils/storage.js`:
+
+```js
+export const storage = {
+  get: (key, fallback = null) => {
+    try {
+      const val = localStorage.getItem(key)
+      return val !== null ? JSON.parse(val) : fallback
+    } catch { return fallback }
+  },
+  set: (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)) }
+    catch (e) { console.warn('[storage] Failed to write', key, e) }
+  },
+  remove: (key) => localStorage.removeItem(key),
+}
+```
+
+Wrapping in try/catch prevents crashes if `localStorage` is unavailable (e.g. private browsing mode in some browsers) or if the stored value is malformed JSON.
+
+---
+
+# 58. Keyboard Shortcuts
+
+## 58.1 Global Shortcuts (Active on All Pages)
+
+| Shortcut | Action |
+|---|---|
+| `G then D` | Navigate to Dashboard (`/`) |
+| `G then S` | Navigate to Stock Browser (`/stocks`) |
+| `G then P` | Navigate to Portfolio (`/portfolio`) |
+| `G then L` | Navigate to Leaderboard (`/leaderboard`) |
+| `G then A` | Navigate to Achievements (`/achievements`) |
+| `M` | Toggle mute/unmute audio |
+| `Escape` | Close any open modal or dialog |
+| `?` | Show keyboard shortcut reference overlay |
+
+## 58.2 Stock Browser Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `/` | Focus the search input |
+| `Arrow Right` | Next page of stocks |
+| `Arrow Left` | Previous page of stocks |
+| `T` | Toggle between table and card view |
+
+## 58.3 Stock Detail / Trade Panel Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `B` | Switch Trade Panel to Buy tab |
+| `S` | Switch Trade Panel to Sell tab |
+| `Enter` | Submit trade (when quantity field is focused) |
+
+## 58.4 Portfolio Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Arrow Up / Down` | Navigate between holding rows |
+| `Enter` | Expand the selected holding row |
+
+## 58.5 Implementation Notes
+
+- Shortcuts are registered in a global `keyboardManager.js` module using `document.addEventListener('keydown', ...)`
+- Shortcuts are disabled when any `input`, `textarea`, or `select` element has focus (to avoid conflicting with typing)
+- The `G then X` navigation shortcuts use a two-key chord: pressing `G` starts a 1000ms window during which the second key is expected
+- The shortcut overlay (`?`) lists all shortcuts in a modal
+
+---
+
+# 59. Browser Support Matrix
+
+## 59.1 Supported Browsers
+
+| Browser | Version | Support Level | Notes |
+|---|---|---|---|
+| Chrome | 110+ | Full | Primary development target |
+| Firefox | 110+ | Full | |
+| Edge | 110+ | Full | Chromium-based |
+| Safari | 16+ | Full | WebSocket + ES Modules work correctly |
+| Chrome (mobile) | Latest | Partial | Renders but not optimised for mobile |
+| Safari (iOS) | Latest | Partial | Renders but not optimised for mobile |
+
+## 59.2 Required Browser Features
+
+| Feature | Chrome 110 | Firefox 110 | Edge 110 | Safari 16 |
+|---|---|---|---|---|
+| ES Modules (import/export) | ✅ | ✅ | ✅ | ✅ |
+| WebSocket API | ✅ | ✅ | ✅ | ✅ |
+| CSS Grid + Flexbox | ✅ | ✅ | ✅ | ✅ |
+| CSS Custom Properties | ✅ | ✅ | ✅ | ✅ |
+| `localStorage` | ✅ | ✅ | ✅ | ✅ |
+| `fetch` API | ✅ | ✅ | ✅ | ✅ |
+| `crypto.randomUUID()` | ✅ | ✅ | ✅ | ✅ |
+| Canvas API (Chart.js) | ✅ | ✅ | ✅ | ✅ |
+| Web Audio API | ✅ | ✅ | ✅ | ✅ (with user interaction) |
+| CSS `backdrop-filter` | ✅ | ✅ | ✅ | ✅ |
+| CSS animations | ✅ | ✅ | ✅ | ✅ |
+| `ResizeObserver` | ✅ | ✅ | ✅ | ✅ |
+
+## 59.3 Known Browser-Specific Issues
+
+| Browser | Issue | Workaround |
+|---|---|---|
+| Safari | Web Audio API requires a user interaction before playing any sound | Audio manager initialises on first click/tap anywhere on the page |
+| Safari | `backdrop-filter` can cause performance issues with many blurred elements | Limit backdrop blur usage to navbar and modals only |
+| Firefox | `crypto.randomUUID()` available from v92 | Already in the supported range (110+) |
+| All | `localStorage` unavailable in private/incognito mode in some configurations | `storage.js` wraps all calls in try/catch with graceful fallback |
+
+## 59.4 Unsupported Environments
+
+| Environment | Status | Reason |
+|---|---|---|
+| Internet Explorer (any version) | Not supported | No ES Modules, no modern CSS |
+| Chrome < 80 | Not supported | No ES Modules |
+| Opera Mini | Not supported | No WebSocket |
+| Node.js (server-side) | Not applicable | Client-side browser app only |
+
+---
+
+# 60. Daily Development Schedule (4-Week Plan)
+
+Estimated hours are based on a solo developer working 3–5 hours per day after school.
+
+## 60.1 Week 1 — Foundation
+
+**Goal:** Auth working, Supabase connected, single page showing live stock data.
+
+### Day 1 (Monday) — 3h
+| Task | Hours |
+|---|---|
+| Set up Vite project, install Tailwind CSS, configure `vite.config.js` and `tailwind.config.js` | 1h |
+| Set up Google Fonts (Space Grotesk + Orbitron), base CSS variables | 0.5h |
+| Create folder structure (`pages/`, `components/`, `utils/`, `state/`) | 0.5h |
+| Create `supabase.js` — initialise Supabase client with env vars | 0.5h |
+| Create Supabase project, run schema SQL for all 10 tables | 0.5h |
+
+### Day 2 (Tuesday) — 4h
+| Task | Hours |
+|---|---|
+| Create all Supabase RLS policies (Section 43) | 1h |
+| Set up `auth.users` trigger to auto-create `users` row | 0.5h |
+| Build Auth page (`/auth`) — login and sign-up tabs, form validation | 2h |
+| Test sign-up and login flow end to end | 0.5h |
+
+### Day 3 (Wednesday) — 4h
+| Task | Hours |
+|---|---|
+| Build client-side router (`router.js`) — parse URL, render correct page, auth guard | 2h |
+| Build Navbar component (static, no live data yet) | 1h |
+| Build Dashboard page shell (layout, placeholder cards) | 1h |
+
+### Day 4 (Thursday) — 4h
+| Task | Hours |
+|---|---|
+| Deploy Supabase Edge Function for Finnhub proxy (Section 44) | 1.5h |
+| Build `finnhub.js` — `fetchQuote()`, `fetchSearch()`, `fetchProfile()` using Edge Function | 1.5h |
+| Test API calls: quote, search, profile all working | 1h |
+
+### Day 5 (Friday) — 3h
+| Task | Hours |
+|---|---|
+| Build Stock Browser page — static layout, fetch and render 37 default stocks | 2h |
+| Add search debounce (300ms), sector filter, sort controls | 1h |
+
+### Day 6 (Saturday) — 5h
+| Task | Hours |
+|---|---|
+| Build Finnhub WebSocket client (`createPriceSocket()`) | 1h |
+| Integrate WebSocket into Stock Browser — prices update live, flash animations work | 2h |
+| Build `state/prices.js` — in-memory price store, event bus | 1h |
+| Build StockCard and StockRow components with flash CSS | 1h |
+
+### Day 7 (Sunday) — 3h
+| Task | Hours |
+|---|---|
+| Build table/card view toggle | 0.5h |
+| Add pagination (20 per page) | 1h |
+| Test Stock Browser end to end — live prices, search, filter, sort, pagination | 1.5h |
+
+**Week 1 total: ~26 hours**
+
+---
+
+## 60.2 Week 2 — Core Trading
+
+**Goal:** Full buy/sell flow and portfolio page working end to end.
+
+### Day 8 (Monday) — 4h
+| Task | Hours |
+|---|---|
+| Build Stock Detail page layout | 1h |
+| Build PriceChart component — fetch candles from Finnhub, render Chart.js line chart | 2h |
+| Add 1D/1W/1M timeframe tabs, chart colour based on direction | 1h |
+
+### Day 9 (Tuesday) — 4h
+| Task | Hours |
+|---|---|
+| Build TradePanel component — Buy/Sell tabs, market order, quantity input, live cost calculation | 3h |
+| Connect TradePanel to `state/user.js` for balance check | 1h |
+
+### Day 10 (Wednesday) — 5h
+| Task | Hours |
+|---|---|
+| Implement buy trade execution — Supabase transaction query (Section 52.3) | 2h |
+| Implement sell trade execution — Supabase transaction query | 2h |
+| Build Toast notification system | 1h |
+
+### Day 11 (Thursday) — 4h
+| Task | Hours |
+|---|---|
+| Build Portfolio page layout and account summary bar | 1h |
+| Build PortfolioTable component | 2h |
+| Connect portfolio to live WebSocket prices — values update in real time | 1h |
+
+### Day 12 (Friday) — 4h
+| Task | Hours |
+|---|---|
+| Build Portfolio pie chart (Chart.js doughnut) | 1h |
+| Build Net worth line chart | 1h |
+| Implement `state/portfolio.js` — recalculate on every price tick, update Supabase | 2h |
+
+### Day 13 (Saturday) — 4h
+| Task | Hours |
+|---|---|
+| Build Transaction History page | 1.5h |
+| Build open orders panel on Portfolio page | 1h |
+| Implement API fallback — detect failure, load mock data, show banner | 1.5h |
+
+### Day 14 (Sunday) — 3h
+| Task | Hours |
+|---|---|
+| Test full trade cycle: buy → portfolio updates → sell → realised gain logged | 2h |
+| Fix bugs found in testing | 1h |
+
+**Week 2 total: ~28 hours**
+
+---
+
+## 60.3 Week 3 — Gamification and Competition
+
+**Goal:** XP, achievements, leaderboard, teacher admin, limit orders.
+
+### Day 15 (Monday) — 4h
+| Task | Hours |
+|---|---|
+| Implement XP system: `xpCalculator.js`, award XP on trade, level-up detection | 2h |
+| Build LevelUpCard component with animation | 1h |
+| Build AchievementToast component | 1h |
+
+### Day 16 (Tuesday) — 4h
+| Task | Hours |
+|---|---|
+| Implement all 23 standard achievement conditions (Section 45) | 3h |
+| Test achievement triggers — first trade, gain milestones, diversification | 1h |
+
+### Day 17 (Wednesday) — 4h
+| Task | Hours |
+|---|---|
+| Build Achievements page — all badges with lock/unlock state | 2h |
+| Build XP bar component used on Dashboard and Profile | 1h |
+| Update Navbar to show XP bar on hover | 1h |
+
+### Day 18 (Thursday) — 4h
+| Task | Hours |
+|---|---|
+| Build Leaderboard page — fetch all session members, RANK() SQL query | 2h |
+| Add Supabase real-time subscription on `session_members` — live rank updates | 1.5h |
+| Add emoji reactions (insert/read from Supabase) | 0.5h |
+
+### Day 19 (Friday) — 4h
+| Task | Hours |
+|---|---|
+| Build Teacher Admin panel — Sessions, Students, Announcements tabs | 3h |
+| Implement teacher portfolio reset query | 1h |
+
+### Day 20 (Saturday) — 5h
+| Task | Hours |
+|---|---|
+| Implement limit orders — TradePanel limit order tab, save to `orders` table | 2h |
+| Implement stop-loss orders | 1h |
+| Implement order execution on price tick (check + fill logic) | 2h |
+
+### Day 21 (Sunday) — 3h
+| Task | Hours |
+|---|---|
+| Implement market events system — random event scheduler, event banner, Supabase insert | 3h |
+
+**Week 3 total: ~28 hours**
+
+---
+
+## 60.4 Week 4 — Polish and Demo Prep
+
+**Goal:** Audio, tutorial, settings, results screen, deployment, testing.
+
+### Day 22 (Monday) — 4h
+| Task | Hours |
+|---|---|
+| Build audio system — AudioManager module, background music tracks, sound effects | 2h |
+| Build Settings page — audio sliders, theme toggle, display name, price alerts | 2h |
+
+### Day 23 (Tuesday) — 4h
+| Task | Hours |
+|---|---|
+| Build Tutorial mode — practice portfolio, 5-step guided overlay | 3h |
+| Connect tutorial completion to XP and badge award | 1h |
+
+### Day 24 (Wednesday) — 3h
+| Task | Hours |
+|---|---|
+| Build Profile page | 1.5h |
+| Implement page fade transitions | 0.5h |
+| Implement dark/light mode toggle (Tailwind `dark:` classes) | 1h |
+
+### Day 25 (Thursday) — 4h
+| Task | Hours |
+|---|---|
+| Build End-of-Simulation Results screen — countdown, podium, confetti, personal summary card | 3h |
+| Connect teacher "End Simulation" button to results screen trigger | 1h |
+
+### Day 26 (Friday) — 4h
+| Task | Hours |
+|---|---|
+| Implement 4–6 secret achievement conditions | 2h |
+| Build FAQ/Help page | 1h |
+| Build keyboard shortcut system + `?` overlay | 1h |
+
+### Day 27 (Saturday) — 5h
+| Task | Hours |
+|---|---|
+| Write unit tests for all calculation functions (Section 34.2) | 3h |
+| Run full manual QA checklist (Section 34.3) | 2h |
+
+### Day 28 (Sunday) — 4h
+| Task | Hours |
+|---|---|
+| Fix bugs found during QA | 2h |
+| Deploy to Vercel — set env vars, run production build, verify live URL | 1h |
+| Write README with setup instructions | 1h |
+
+**Week 4 total: ~28 hours**
+
+**Grand total: ~110 hours over 28 days**
+
+---
+
 *End of StockPilot Product Requirements Document v1.0*
-*Total sections: 51 | Author: Brayden Sun | Last updated: 2026-05-13*
+*Total sections: 60 | Author: Brayden Sun | Last updated: 2026-05-13*
 
 
