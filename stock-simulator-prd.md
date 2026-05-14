@@ -15,7 +15,7 @@
 3. Target Users
 4. Goals and Objectives
 5. Core User Flows
-6. Feature List (MoSCoW)
+6. Feature List (MoSCoW Prioritization)
 7. Game Mechanics
 8. Technical Architecture
 9. API Strategy (Finnhub)
@@ -47,6 +47,29 @@
 35. Deployment Plan
 36. Development Roadmap
 37. Definition of Done
+38. Fractional Share Rounding Rules
+39. Leaderboard Tie-Breaking Rules
+40. Component Specifications
+41. Additional Wireframes
+42. Animation Specification
+43. Supabase RLS Policies (SQL)
+44. Supabase Edge Function — Finnhub Proxy
+45. Achievement Unlock Conditions (Logic Rules)
+46. Badge Artwork Descriptions
+47. XP Bar Visual Behaviour
+48. Market Event Copy
+49. App Copy Specification
+50. Simulation Speed — Technical Summary
+51. Page States — Portfolio, Stocks, and Leaderboard
+52. Full SQL Query Reference
+53. Mock Data Specification
+54. Security Threat Model
+55. Component Specifications (Continued)
+56. WebSocket Message Formats
+57. localStorage Schema
+58. Keyboard Shortcuts
+59. Browser Support Matrix
+60. Daily Development Schedule (4-Week Plan)
 
 ---
 
