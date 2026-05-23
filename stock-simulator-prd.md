@@ -83,6 +83,13 @@
 71. Cosmetic Reward System
 72. Trade Insight Cards
 73. Help / FAQ Page
+74. Project Timeline and Submission Requirements
+75. Learn Tab — Educational Lessons
+76. Accessibility Implementation Plan
+77. Leaderboard Rank History
+78. Price Alert System
+79. Transaction History Filters
+80. Version 2 Roadmap
 
 ---
 
@@ -7532,5 +7539,470 @@ On the login screen, click **"Forgot password?"** and enter your email. You'll r
 
 ---
 
+---
+
+# 74. Project Timeline and Submission Requirements
+
+## 74.1 Key Dates
+
+| Milestone | Target Date | Notes |
+|---|---|---|
+| Working demo | ~3 weeks from project start (approx. June 13, 2026) | Must be fully functional and deployed |
+| Final submission | 1–2 weeks after demo (approx. June 20–27, 2026) | Polish, README, final push to GitHub |
+| Presentation day | Same as demo deadline | Live demo to class + teacher |
+
+**Total available build time:** ~5 weeks from project start to final submission.
+
+## 74.2 Presentation Format
+
+- **Audience:** Class + teacher (live demo in front of everyone)
+- **Format:** Screen share or projected demo of the live deployed site
+- **Recommended flow:**
+  1. Open the app — show the login screen and register a new account
+  2. Walk through the tutorial overlay
+  3. Buy 2–3 stocks and show the trade insight card
+  4. Show the portfolio page with live P&L
+  5. Open the leaderboard — show real-time ranking
+  6. Show the achievements page and unlock a badge live if possible
+  7. Open the admin panel briefly to show teacher controls
+  8. Show the Learn tab with one lesson open
+- **Time estimate:** 5–8 minutes
+
+## 74.3 Grading Format
+
+The project is graded by rubric across three categories:
+
+| Category | What It Covers |
+|---|---|
+| Functionality | Does the app work? All must-have features present and bug-free? Trades, portfolio, leaderboard, auth |
+| Design | Visual polish, consistency, responsiveness at 1024px+, dark theme quality, animations |
+| Code quality | File structure, ES Modules, clean variable naming, no console errors, no dead code |
+
+**Implications for build priority:** Functionality is the most likely highest-weighted category — ship all must-haves first, then polish design, then clean up code.
+
+## 74.4 Submission Requirements
+
+| Requirement | Status |
+|---|---|
+| Live public URL (Vercel) | Required — teacher will click and test it |
+| GitHub repository (public) | Required — teacher may review source code |
+| README file | Yes — personal best practice + portfolio piece |
+| ZIP of source code | Not required |
+| Video demo / screen recording | Not required |
+| Specific file size or file count limit | Not specified by teacher |
+
+## 74.5 README Spec
+
+The `README.md` must include:
+
+1. **Project name and tagline** — StockPilot: *Take the controls. Trade without risk.*
+2. **What it is** — 2–3 sentence description
+3. **Live URL** — link to the deployed Vercel site
+4. **Tech stack** — Vite, Tailwind, Supabase, Finnhub, Chart.js
+5. **Features** — bulleted list of key features
+6. **Local setup instructions:**
+   ```bash
+   git clone https://github.com/BraydoCoder/Stock-Market-Simulator.git
+   cd Stock-Market-Simulator
+   npm install
+   cp .env.example .env.local   # fill in Supabase + Finnhub keys
+   npm run dev
+   ```
+7. **Environment variables** — list of required `.env.local` keys with descriptions (no actual values)
+8. **Author** — Brayden Sun
+
+## 74.6 Repository Visibility
+
+The GitHub repo is **public**. This means:
+- No API keys, secrets, or `.env.local` files can ever be committed
+- `.env.local` must be in `.gitignore` from day one
+- The Supabase anon key is safe to expose (it is designed for client-side use)
+- The Finnhub API key is proxied via Edge Function — never in client code
+
+---
+
+# 75. Learn Tab — Educational Lessons
+
+A dedicated `/learn` page accessible from the main navigation. Self-directed — students browse at their own pace. No quizzes or teacher-assigned content.
+
+## 75.1 Navigation
+
+- Added to the navbar as a fifth link: **Dashboard | Stocks | Portfolio | Leaderboard | Learn**
+- Also linked from the Help page footer: *"Want to go deeper? Visit the Learn tab."*
+- Accessible to all authenticated users at any time, regardless of simulation state
+
+## 75.2 Page Layout
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  | Dashboard  Stocks  Portfolio  Leaderboard  [Learn] │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  LEARN                                                           │
+│  Build your financial knowledge                                  │
+│                                                                  │
+│  [All]  [Basics]  [Trading]  [Strategy]  [Advanced]             │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
+│  │ 📈 What is a     │  │ 💰 How Stocks    │  │ 🔄 Buy Low,   │ │
+│  │    Stock?        │  │    Make Money     │  │    Sell High   │ │
+│  │  Basics · 2 min  │  │  Basics · 3 min  │  │  Strategy·3min│ │
+│  │  [Read →]        │  │  [Read →]        │  │  [Read →]     │ │
+│  └──────────────────┘  └──────────────────┘  └────────────────┘ │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
+│  │ ⚖️  Risk vs      │  │ 📊 Reading a     │  │ 🏦 What is    │ │
+│  │    Reward        │  │    Price Chart    │  │    Compound    │ │
+│  │  Basics · 2 min  │  │  Trading · 4 min │  │    Interest?   │ │
+│  │  [Read →]        │  │  [Read →]        │  │  Advanced·5min │ │
+│  └──────────────────┘  └──────────────────┘  └────────────────┘ │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## 75.3 Lesson Catalogue
+
+| Lesson | Category | Est. Read Time | Key Concept |
+|---|---|---|---|
+| What is a Stock? | Basics | 2 min | Ownership in a company, why stocks exist |
+| How Stocks Make Money | Basics | 3 min | Price appreciation + dividends |
+| Risk vs. Reward | Basics | 2 min | Higher risk = higher potential return (and loss) |
+| What is a Portfolio? | Basics | 2 min | Collection of investments, why diversify |
+| Buy Low, Sell High | Strategy | 3 min | The core principle — harder than it sounds |
+| Reading a Price Chart | Trading | 4 min | Open/close, candlesticks, trend lines |
+| What is a Market Order? | Trading | 2 min | Instant execution at current price |
+| What is a Limit Order? | Trading | 2 min | Setting your price, execution risk |
+| What is a Stop-Loss? | Trading | 2 min | Automatic downside protection |
+| Transaction Fees Explained | Trading | 2 min | Why every trade costs money |
+| Diversification | Strategy | 3 min | Don't put all eggs in one basket — with math |
+| Average Cost (Dollar-Cost Averaging) | Strategy | 3 min | Buying over time to reduce timing risk |
+| What is Market Capitalization? | Advanced | 3 min | Large cap vs. mid cap vs. small cap |
+| P/E Ratio Explained | Advanced | 4 min | How to value a company (simplified) |
+| What is Compound Interest? | Advanced | 5 min | Einstein's "8th wonder of the world" |
+| Bull vs. Bear Markets | Advanced | 3 min | What drives long-term market cycles |
+
+**Total:** 16 lessons across 4 categories.
+
+## 75.4 Individual Lesson Page
+
+Each lesson opens as a full-page read at `/learn/:slug`:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ← Back to Learn                                                 │
+│                                                                  │
+│  📈 What is a Stock?                        Basics · 2 min read  │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                  │
+│  [Lesson body — plain English, short paragraphs, bold terms]     │
+│                                                                  │
+│  Key Takeaway:                                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Owning a share of Apple means owning a tiny fraction of  │   │
+│  │ one of the most valuable companies on Earth. If Apple     │   │
+│  │ grows, your share grows too.                             │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  [← Previous lesson]              [Next lesson →]               │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## 75.5 XP for Reading Lessons
+
+Reading a lesson (spending ≥60 seconds on the page) awards **+15 XP** the first time. Re-reading the same lesson does not award XP again.
+
+---
+
+# 76. Accessibility Implementation Plan
+
+StockPilot targets a best-effort accessibility standard with no formal WCAG compliance audit required. The school has no specific accessibility requirements.
+
+## 76.1 What Is Implemented
+
+| Area | Level | Implementation |
+|---|---|---|
+| Colour contrast | Best effort | All text/background combinations target ≥4.5:1 contrast ratio (WCAG AA for normal text) |
+| Keyboard navigation | Partial — main flows only | Tab order and Enter/Esc keys work for: Login, Trade Panel, Modal close, Nav links |
+| ARIA labels | Partial — labels only | `aria-label` added to all icon buttons, inputs, and form controls |
+| ARIA live regions | Not implemented | Price updates do not announce to screen readers (too noisy for a trading app) |
+| Font size / browser zoom | Respected | Layout uses relative units (rem/em) — browser zoom up to 150% does not break layout |
+| Focus indicators | Implemented | All focusable elements show a visible focus ring using `--color-accent-primary` outline |
+| Screen reader support | Partial | Basic ARIA labels on controls; no full screen reader testing or live region support |
+
+## 76.2 Keyboard Navigation — Covered Flows
+
+| Flow | Keyboard Behaviour |
+|---|---|
+| Login / Register | Tab through fields, Enter to submit |
+| Navigation bar | Tab to nav links, Enter to navigate |
+| Trade Panel | Tab through Buy/Sell tabs, quantity input, order type; Enter to confirm |
+| Modals | Esc to close; Tab cycles within modal only (focus trap) |
+| Toast notifications | Not keyboard-interactive — auto-dismiss only |
+| Stock search | Tab to search input, type to search, Arrow keys to navigate results, Enter to select |
+
+## 76.3 Colour Contrast Targets
+
+| Usage | Foreground | Background | Ratio Target |
+|---|---|---|---|
+| Body text | `#F9FAFB` | `#111827` | ≥7:1 |
+| Secondary text | `#9CA3AF` | `#111827` | ≥4.5:1 |
+| Accent buttons | `#0A0E1A` | `#00D4AA` | ≥4.5:1 |
+| Gain values | `#10B981` | `#111827` | ≥4.5:1 |
+| Loss values | `#EF4444` | `#111827` | ≥4.5:1 |
+| Muted text | `#6B7280` | `#111827` | ~3:1 (used for non-essential labels only) |
+
+## 76.4 What Is Not Implemented
+
+- Full WCAG 2.1 AA audit
+- ARIA live regions for price updates (screen readers would announce on every tick — too disruptive)
+- High-contrast mode toggle
+- Reduced-motion mode (animations play regardless of `prefers-reduced-motion`)
+- Screen reader testing on NVDA / VoiceOver
+
+---
+
+# 77. Leaderboard Rank History
+
+Each student can view a small chart showing how their rank has changed over the course of the simulation.
+
+## 77.1 Where It Appears
+
+- On the **Leaderboard page**, clicking a student's row (your own row only — other students' history is private) expands a rank history panel below the row
+- Also visible on the **Profile page** (`/profile`) as a larger chart
+
+## 77.2 Data Source
+
+A `rank_snapshots` table records each student's rank once per simulated day:
+
+```sql
+CREATE TABLE rank_snapshots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_member_id UUID REFERENCES session_members(id) ON DELETE CASCADE,
+  rank INTEGER NOT NULL,
+  portfolio_value NUMERIC(12,2) NOT NULL,
+  snapshot_date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(session_member_id, snapshot_date)
+);
+```
+
+A Supabase scheduled function (or Edge Function triggered by a cron) inserts one row per student at the end of each simulated trading day.
+
+## 77.3 Rank History Chart
+
+```
+RANK HISTORY — Maya Chen
+─────────────────────────────────────────────────────
+Rank
+ #1 ┤
+ #3 ┤          ╭──
+ #5 ┤  ╭──╮   ╯
+ #7 ┤──╯   ╰──
+    └──────────────────────────────────────────────
+      Day 1   Day 5   Day 10  Day 15   Day 20
+```
+
+- **Chart type:** Line chart (Chart.js), y-axis inverted (#1 at top)
+- **X-axis:** Simulated day number (Day 1, Day 2, …)
+- **Y-axis:** Rank (inverted — #1 is the best, shown at the top)
+- **Colour:** `--color-accent-secondary` (`#6366F1`)
+- **Tooltip on hover:** "Day 7 — Rank #3 — PC$12,450"
+- **Update frequency:** Once per simulated trading day (not real-time)
+
+## 77.4 Leaderboard Column Update
+
+The leaderboard table now shows three columns for each student (as decided in the spec):
+
+| Column | Description |
+|---|---|
+| Starting balance | Always PC$10,000 (or teacher-configured amount) |
+| Current portfolio value | Live, updated in real time |
+| % gain | `(current − start) / start × 100` |
+
+```
+# │ Name         │ Level           │ Start     │ Current   │ Gain    │
+──┼──────────────┼─────────────────┼───────────┼───────────┼────────
+1 │ 🥇 Jordan K. │ Market Analyst  │ PC$10,000 │ PC$15,420 │ +54.2% │
+2 │ 🥈 Alex P.   │ Swing Trader    │ PC$10,000 │ PC$13,910 │ +39.1% │
+3 │ 🥉 Maya C. ★ │ Portfolio Pro   │ PC$10,000 │ PC$12,847 │ +28.5% │
+```
+
+---
+
+# 78. Price Alert System
+
+Users can set custom price movement alerts on any stock they own. When a stock's intraday change exceeds the user's defined threshold, a notification fires.
+
+## 78.1 Setting an Alert
+
+From the **Stock Detail page**, below the trade panel:
+
+```
+┌──────────────────────────────────────┐
+│  PRICE ALERT                         │
+│  ─────────────────────────────────   │
+│  Notify me when AAPL moves more than │
+│  [ 5 ] % in a single day             │
+│                                      │
+│  [Set Alert]   [Remove Alert]        │
+└──────────────────────────────────────┘
+```
+
+- One alert per stock per user
+- Threshold is a percentage (e.g. 5 = ±5%)
+- Alert fires on both upward and downward moves beyond the threshold
+- Stored in the `price_alerts` table:
+
+```sql
+CREATE TABLE price_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_member_id UUID REFERENCES session_members(id) ON DELETE CASCADE,
+  symbol TEXT NOT NULL,
+  threshold_pct NUMERIC(5,2) NOT NULL CHECK (threshold_pct > 0),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(session_member_id, symbol)
+);
+```
+
+## 78.2 Alert Trigger Logic
+
+The alert is checked on every WebSocket price tick:
+
+```javascript
+function checkPriceAlerts(symbol, currentChangePct) {
+  const alert = priceAlerts.get(symbol)
+  if (!alert) return
+  if (Math.abs(currentChangePct) >= alert.thresholdPct) {
+    const direction = currentChangePct > 0 ? 'up' : 'down'
+    const emoji = direction === 'up' ? '📈' : '📉'
+    showToast(
+      `${emoji} ${symbol} is ${direction} ${Math.abs(currentChangePct).toFixed(2)}% today — your alert threshold of ${alert.thresholdPct}% was hit`,
+      'warning',
+      8000
+    )
+    priceAlerts.delete(symbol) // fire once per day, re-check next day
+  }
+}
+```
+
+## 78.3 Alert Behaviour
+
+| Scenario | Behaviour |
+|---|---|
+| Alert threshold hit | Toast notification fires; alert deactivates for the rest of the simulated day |
+| Next simulated day | Alert reactivates automatically |
+| User removes alert | Deleted from `price_alerts` table immediately |
+| User does not own the stock | Alert can still be set on any stock (not just holdings) |
+| Multiple alerts firing at once | Toasts queue — one per stock, max 3 simultaneously |
+
+## 78.4 Alert Indicators
+
+- On the Stock Browser, stocks with an active alert show a small bell icon next to the price: `PC$189.52 🔔`
+- On the Portfolio page, holdings with active alerts show the bell icon in their row
+
+---
+
+# 79. Transaction History Filters
+
+Users can filter and sort their full transaction history from the Portfolio page.
+
+## 79.1 Filter Controls
+
+Located above the transaction history table on the Portfolio page:
+
+```
+[All types ▾]   [All stocks ▾]   [Newest first ▾]   [Search ticker...]
+```
+
+| Control | Options |
+|---|---|
+| Type filter | All types / Buy only / Sell only / Limit fills / Stop-loss fills |
+| Stock filter | All stocks / individual ticker (dropdown of symbols traded) |
+| Sort order | Newest first / Oldest first / Largest value / Smallest value / Biggest gain / Biggest loss |
+| Search | Text input — filters rows where the symbol matches the typed ticker |
+
+## 79.2 Filter Behaviour
+
+- Filters apply instantly (no submit button) — results update as user changes controls
+- Active filters are shown as dismissible chips above the table: `× BUY  × AAPL`
+- Clicking a chip removes that filter
+- A **"Clear all filters"** link appears when any filter is active
+- Filter state is not persisted — resets on page reload
+
+## 79.3 Transaction Row Data
+
+Each row in the filtered table shows:
+
+| Column | Content |
+|---|---|
+| Date/time | Simulated date + real timestamp |
+| Type | BUY / SELL / LIMIT FILL / STOP-LOSS |
+| Symbol | Ticker + company name |
+| Shares | Quantity (to 4 decimal places) |
+| Price | Price per share at execution |
+| Fee | Transaction fee paid |
+| Total | Gross value (shares × price) |
+| Gain/Loss | Realized gain/loss (sell only; blank for buys) |
+
+---
+
+# 80. Version 2 Roadmap
+
+Features that are explicitly out of scope for Version 1 but are planned or desired for future development.
+
+## 80.1 Project Continuation Plan
+
+StockPilot may be continued after submission depending on how the project goes. The codebase is intentionally structured to make adding new features straightforward without rewrites.
+
+## 80.2 Cut Features — What Didn't Make V1
+
+These features were considered but cut to hit the deadline:
+
+| Feature | Why Cut | V2 Priority |
+|---|---|---|
+| Multiplayer / chat rooms | Too complex for the timeline; full social layer is a separate product | High |
+| Cryptocurrency trading | Different market hours, different data source, significantly more complexity | High |
+| Historical period simulation | Requires a different data model (no live prices); teacher workflow is more complex | Medium |
+| Options trading | Advanced derivatives — not appropriate for the beginner target user in V1 | Low |
+
+## 80.3 Extensibility Architecture
+
+The V1 codebase is structured to support future additions:
+
+**Asset type abstraction:** The `holdings` table stores a generic `symbol` field — adding crypto symbols (e.g. `BTC-USD`) requires no schema change, only a new data source adapter.
+
+**Order type system:** The `orders` table uses a `type` column (`MARKET`, `LIMIT`, `STOP_LOSS`) — adding new order types (e.g. `TRAILING_STOP`, `OPTIONS_CALL`) means adding a new enum value and handler, not restructuring the table.
+
+**API adapter pattern:** The Finnhub proxy Edge Function is the only place that knows about Finnhub. Swapping in a crypto API (e.g. CoinGecko) means writing a new adapter that exports the same interface — no changes to the frontend.
+
+**Session system:** The multi-session architecture already supports multiple asset classes per session — a future teacher could create a "Crypto Only" session by limiting the tradeable symbol list.
+
+## 80.4 V2 Feature Concepts
+
+| Feature | Description |
+|---|---|
+| Crypto trading | Add BTC, ETH, SOL, etc. via CoinGecko API; 24/7 market; same portfolio mechanics |
+| Multiplayer rooms | Real-time chat per session; see classmates' recent trades (opt-in); reactions upgrade |
+| Historical period sim | Teacher picks a date range; Finnhub historical candles feed a time-accelerated replay |
+| Options trading | Basic calls and puts on major stocks; tutorial required before enabling |
+| Mobile app | Native iOS/Android via React Native or a fully responsive web redesign |
+| Real portfolio import | Connect a real brokerage (read-only) to compare sim performance against real holdings |
+| AI market commentary | Auto-generated daily summary of the sim's market movements using Claude API |
+
+## 80.5 Mobile Vision
+
+A future iOS/Android mobile app is desired. Options:
+
+| Approach | Pros | Cons |
+|---|---|---|
+| React Native | True native performance, shared JS logic | Requires learning React + native toolchain |
+| Progressive Web App (PWA) | No app store needed, builds on existing code | Limited native features, not as polished |
+| Capacitor wrapper | Wraps existing web app in a native shell | Low effort but limited native UI fidelity |
+
+**Recommended V2 approach:** Build a fully mobile-responsive web version first (PWA), then evaluate native app if usage justifies the investment.
+
+---
+
 *End of StockPilot Product Requirements Document v1.0*
-*Total sections: 73 | Author: Brayden Sun | Last updated: 2026-05-13*
+*Total sections: 80 | Author: Brayden Sun | Last updated: 2026-05-23*
