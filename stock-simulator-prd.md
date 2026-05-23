@@ -79,6 +79,10 @@
 67. Teacher Onboarding Flow
 68. Portfolio Math Reference
 69. CI/CD Pipeline
+70. Tutorial Overlay Specification
+71. Cosmetic Reward System
+72. Trade Insight Cards
+73. Help / FAQ Page
 
 ---
 
@@ -7199,5 +7203,334 @@ Re-run `supabase functions deploy finnhub-proxy` any time the Edge Function code
 
 ---
 
+---
+
+# 70. Tutorial Overlay Specification
+
+The tutorial is a guided overlay that runs on first login. It highlights real UI elements in sequence using a spotlight effect — no separate mode or dummy portfolio. The user is learning the actual app.
+
+## 70.1 Trigger Conditions
+
+- Fires automatically on first login after email verification
+- A `tutorial_completed` boolean is stored in the `users` table
+- If `tutorial_completed = false`, overlay launches after the dashboard finishes loading
+- Can be replayed at any time via **Settings → Replay Tutorial**
+
+## 70.2 Overlay Mechanics
+
+| Element | Description |
+|---|---|
+| Spotlight | A dark semi-transparent backdrop covers the full screen; the highlighted element is cut out and fully visible |
+| Tooltip bubble | Appears adjacent to the highlighted element; contains a title, 1–2 sentence explanation, and navigation buttons |
+| Navigation | Back / Next buttons in each bubble; skip button (top-right of overlay) exits at any step |
+| Progress indicator | Step X of Y shown in each tooltip bubble (e.g. "3 of 7") |
+| Backdrop click | Clicking outside the spotlight does nothing — prevents accidental skips |
+
+## 70.3 Tutorial Steps
+
+| Step | Highlighted Element | Tooltip Title | Tooltip Text |
+|---|---|---|---|
+| 1 | Portfolio value card (dashboard) | "Your Starting Balance" | "You start with PC$10,000 in PilotCoins — your virtual money. Your goal is to grow this as much as possible by the end of the simulation." |
+| 2 | XP bar (dashboard) | "Your Investor Level" | "Every action earns XP. As you level up, you unlock new titles and cosmetic rewards shown on the leaderboard." |
+| 3 | Stocks nav link | "Browse the Market" | "Click Stocks to see all available companies. You can search by name, filter by sector, and sort by price or daily change." |
+| 4 | Stock row in browser | "Reading a Stock" | "Each row shows the ticker symbol, company name, current price, and today's % change. Green means up, red means down." |
+| 5 | Stock detail — Trade Panel | "Buying Your First Stock" | "Enter how many shares you want, check the total cost including the 0.5% fee, then click Confirm Buy. You'll own shares of that company instantly." |
+| 6 | Portfolio nav link | "Tracking Your Holdings" | "Your Portfolio page shows every stock you own, what you paid for it, what it's worth now, and your unrealized gain or loss." |
+| 7 | Leaderboard nav link | "Competing with Your Class" | "The leaderboard ranks everyone by portfolio value and % gain. See how you stack up against your classmates in real time." |
+
+## 70.4 After the Tutorial
+
+1. On Step 7 completion, the overlay closes
+2. A toast appears: *"Tutorial complete! Time to start trading."*
+3. `tutorial_completed` is set to `true` in the `users` table
+4. The user lands back on the dashboard, ready to trade
+
+## 70.5 Replay from Settings
+
+- Settings page has a **"Replay Tutorial"** button
+- Clicking it resets the overlay state and re-launches from Step 1
+- Does NOT reset `tutorial_completed` flag — it's just a UI replay, not a fresh start
+- Available at any time, regardless of simulation state
+
+## 70.6 Skippable
+
+A **"Skip tutorial"** button is always visible in the top-right of the overlay. Clicking it:
+1. Closes the overlay immediately
+2. Sets `tutorial_completed = true`
+3. Shows toast: *"Tutorial skipped. You can replay it anytime in Settings."*
+
+---
+
+# 71. Cosmetic Reward System
+
+Levelling up in StockPilot unlocks visible cosmetic rewards — titles and avatar frame styles — shown on the leaderboard and the user's profile page. Cosmetics are permanent once earned and are never lost.
+
+## 71.1 What Cosmetics Exist
+
+| Type | Description | Where Displayed |
+|---|---|---|
+| Investor title | Text label shown below the user's display name | Leaderboard row, profile page |
+| Avatar frame | Decorative border around the user's avatar/initials | Leaderboard row, profile page, navbar dropdown |
+| Profile accent colour | The user's name and stats render in a unique colour | Profile page header |
+
+## 71.2 Title and Frame Unlocks by Level
+
+| Level | Title | Avatar Frame | Accent Colour |
+|---|---|---|---|
+| 1 | Rookie Pilot | Plain grey ring | `#9CA3AF` (grey) |
+| 2 | Market Watcher | Thin white ring | `#F9FAFB` (white) |
+| 3 | Trade Starter | Blue ring | `#3B82F6` (blue) |
+| 4 | Chart Reader | Teal ring | `#00D4AA` (teal) |
+| 5 | Bull Believer | Green ring | `#10B981` (green) |
+| 6 | Risk Taker | Orange ring | `#F97316` (orange) |
+| 7 | Portfolio Builder | Purple ring | `#8B5CF6` (purple) |
+| 8 | Swing Trader | Double ring (teal + white) | `#00D4AA` (teal) |
+| 9 | Value Hunter | Gold ring | `#F59E0B` (gold) |
+| 10 | Market Analyst | Animated gold pulse ring | `#F59E0B` (gold) |
+| 11 | Sector Scout | Animated teal pulse ring | `#00D4AA` (teal) |
+| 12 | Index Beater | Silver ring with glow | `#9CA3AF` (silver) |
+| 13 | Alpha Seeker | Indigo ring with glow | `#6366F1` (indigo) |
+| 14 | Momentum Trader | Animated rainbow ring | Rotating hue |
+| 15 | Portfolio Pro | Animated gold + teal ring | `#F59E0B` (gold) |
+| 16 | Smart Money | Platinum ring | `#E5E7EB` (platinum) |
+| 17 | Deep Value | Diamond ring | `#BAE6FD` (light blue) |
+| 18 | Market Timer | Animated pulse (fast) | `#EF4444` (red) |
+| 19 | Quant Trader | Double animated ring | `#6366F1` (indigo) |
+| 20 | Hedge Fund Boss | Animated flame ring | `#F97316` (orange) |
+| 21 | Market Maker | Gold flame ring | `#F59E0B` (gold) |
+| 22 | Wolf of StockPilot | Animated howl ring (shake) | `#EF4444` (red) |
+| 23 | Trading Legend | Diamond animated ring | `#BAE6FD` (light blue) |
+| 24 | Warren Buffett Jr. | Animated platinum pulse | `#E5E7EB` (platinum) |
+| 25 | Pilot Grandmaster | Animated rainbow flame ring | Full colour cycle |
+
+## 71.3 Achievement Cosmetics
+
+Six special badges (the secret achievements) each unlock a unique avatar frame available to no one else:
+
+| Secret Achievement | Special Frame |
+|---|---|
+| Diamond Hands | Animated diamond sparkle ring |
+| Contrarian | Inverted colour ring (dark-on-light) |
+| Doomsday Prepper | Red cracked ring |
+| Market Whisperer | Ethereal glow ring |
+| The Patient One | Slow-breathing pulse ring |
+| Diversification Nation | Multicolour sector-split ring |
+
+## 71.4 How Cosmetics Are Applied
+
+1. User levels up → `LevelUpCard` modal shows the new title, new frame, and accent colour
+2. Title and frame are immediately applied to the user's leaderboard row
+3. Users can preview all locked cosmetics on their profile page (shown greyed out with the level required)
+4. Users cannot equip a cosmetic from a higher level — you must earn it
+5. No cosmetics are ever lost, even if an achievement is theoretically reassessed
+
+## 71.5 Profile Page — Cosmetic Preview
+
+The profile page (`/profile`) shows:
+- Current avatar with active frame
+- Current title below display name
+- A grid of all 25 level frames: unlocked ones are full colour, locked ones are greyed out with a lock icon and "Level X" label
+- A row of all 29 badges: same locked/unlocked display
+
+---
+
+# 72. Trade Insight Cards
+
+After every confirmed trade, a small educational card appears explaining the financial concept most relevant to that trade. The goal is to connect each action to a real-world financial lesson without interrupting the flow.
+
+## 72.1 Behaviour
+
+- Appears as a modal-style card overlaying the trade panel, ~400ms after the trade success toast
+- Can be dismissed by clicking the **X** button or anywhere on the backdrop
+- Auto-dismisses after 8 seconds if not manually closed
+- Can be turned off globally via **Settings → Trade Insights** (toggle, on by default)
+- The toggle state is saved to localStorage under the key `settings.tradeInsights`
+
+## 72.2 Card Anatomy
+
+```
+┌──────────────────────────────────────────────┐
+│  💡  Fee Awareness                        [X] │
+│  ──────────────────────────────────────────  │
+│  You paid a 0.5% fee on this trade —         │
+│  that's PC$4.72.                             │
+│                                              │
+│  On a real platform, trading fees add up     │
+│  fast. Frequent traders can pay hundreds     │
+│  or thousands of dollars per year in         │
+│  commissions.                                │
+│                                              │
+│  ┌──────────────────────────────────────┐   │
+│  │ Did you know? Some brokers like      │   │
+│  │ Robinhood offer zero-commission      │   │
+│  │ trades. They make money other ways.  │   │
+│  └──────────────────────────────────────┘   │
+│                           [Turn off insights] │
+└──────────────────────────────────────────────┘
+```
+
+## 72.3 Insight Triggers and Content
+
+Each insight fires the **first time** the triggering condition is met, then never again (tracked in `users.seen_insights` as a JSON array of insight IDs).
+
+| Insight ID | Trigger | Title | Core Lesson |
+|---|---|---|---|
+| `first_buy` | First ever buy trade | "You're an Investor Now" | Owning a share = owning a tiny piece of the company |
+| `first_fee` | First trade of any kind | "Fee Awareness" | Trading fees exist and add up over time |
+| `first_sell_profit` | First sell at a gain | "Realizing a Gain" | Unrealized gains only become real money when you sell |
+| `first_sell_loss` | First sell at a loss | "Taking a Loss" | Selling below your buy price locks in the loss permanently |
+| `first_limit_order` | First limit order placed | "Limit Orders" | A limit order lets you set your price instead of accepting whatever the market offers |
+| `first_stop_loss` | First stop-loss placed | "Stop-Loss Orders" | A stop-loss is insurance — it caps your downside automatically |
+| `high_concentration` | Single stock exceeds 30% of portfolio | "Concentration Risk" | Putting too much in one stock means one bad day can hurt your whole portfolio |
+| `diversified` | Holds 5+ different stocks | "Diversification" | Spreading investments across companies reduces the impact of any single stock dropping |
+| `first_avg_down` | Buys more of a stock already at a loss | "Averaging Down" | Buying more of a losing stock lowers your average cost — a bold but risky strategy |
+| `big_gain_unrealized` | Single holding unrealized gain > 20% | "Paper Gains" | Until you sell, that gain isn't real. Markets can reverse quickly. |
+| `market_event` | First market event fires | "Market Volatility" | Real markets have sudden swings — events like earnings surprises or economic news cause price jumps |
+| `end_of_day` | First simulated trading day ends | "Market Hours" | Real stock markets only trade on weekdays, 9:30am–4pm EST — outside those hours, prices don't change |
+
+## 72.4 Repeat Insights
+
+Insights beyond the first-time set fire **every time** (not tracked, always visible unless insights are turned off):
+
+| Trigger | Title | Content |
+|---|---|---|
+| Sell at a loss (any time) | "Realized Loss" | Reminds the user the loss is now permanent |
+| Trade fee > PC$50 | "Large Fee" | Flags when a single trade's fee is unusually high |
+
+## 72.5 Settings Toggle
+
+In **Settings → Experience**:
+```
+Trade Insights
+Show a brief financial lesson after each trade
+[Toggle: ON]
+```
+
+When off:
+- No insight card appears after trades
+- The toggle is persistent in localStorage
+- Can be turned back on at any time
+
+---
+
+# 73. Help / FAQ Page
+
+## 73.1 Overview
+
+A dedicated `/help` page accessible from:
+- The navbar (question mark icon in the right cluster)
+- The Settings page (link: "View Help & FAQ")
+- The tutorial completion screen (link: "Learn more about investing")
+
+The page has no backend — it is entirely static content rendered client-side. It does not require authentication.
+
+## 73.2 Page Layout
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ✈ StockPilot  | Dashboard  Stocks  Portfolio  Leaderboard  ?  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  HELP & FAQ                                                     │
+│  ─────────────────────────────────────────────────────────     │
+│  [Getting Started]  [Trading]  [Portfolio]  [Competition]       │
+│               [Technical]                                       │
+│                                                                 │
+│  ▼ Getting Started ──────────────────────────────────────────  │
+│  ▼ Trading Basics  ──────────────────────────────────────────  │
+│  ▼ Your Portfolio  ──────────────────────────────────────────  │
+│  ▼ Competition & Leaderboard ────────────────────────────────  │
+│  ▼ Technical Issues ─────────────────────────────────────────  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Each section is an accordion — clicking the header expands the Q&A pairs inside. Only one section open at a time.
+
+## 73.3 FAQ Content
+
+### Getting Started
+
+**What is StockPilot?**
+StockPilot is a stock market simulator that lets you trade real companies using virtual currency called PilotCoins (PC$). You start with PC$10,000 and try to grow your portfolio as much as possible — without risking real money.
+
+**How do I join my class session?**
+Your teacher will give you a 6-digit join code (like SP-4829). Enter it when you register, or go to Settings → Join a Class if you already have an account.
+
+**What are PilotCoins?**
+PilotCoins (PC$) are the virtual currency used in StockPilot. They work exactly like real dollars when buying and selling stocks, but they have no real-world value — it's a safe way to practice without risk.
+
+**Can I lose real money?**
+No. StockPilot uses only virtual PilotCoins. No real money is ever involved.
+
+---
+
+### Trading Basics
+
+**What is a stock?**
+A stock (or share) represents a small piece of ownership in a company. When you buy a stock, you own a fraction of that company. If the company does well and its stock price rises, your investment is worth more.
+
+**What is a market order?**
+A market order buys or sells shares immediately at the current market price. It's the simplest order type and executes instantly.
+
+**What is a limit order?**
+A limit order lets you set the price you want to buy or sell at. The trade only executes if the market price reaches your specified limit. This gives you more control but no guarantee the order will fill.
+
+**What is a stop-loss order?**
+A stop-loss automatically sells your shares if the price drops to a level you set. It limits how much you can lose on a position without having to watch the price constantly.
+
+**What is the 0.5% transaction fee?**
+Every buy or sell trade costs 0.5% of the trade value. For example, buying PC$1,000 of stock costs PC$1,005 total (PC$1,000 + PC$5 fee). This reflects how real brokers charge commissions.
+
+**What is average cost?**
+If you buy the same stock multiple times at different prices, your average cost is the weighted average of all those purchases. This is the price StockPilot uses to calculate your gain or loss.
+
+---
+
+### Your Portfolio
+
+**What is the difference between unrealized and realized gain?**
+An unrealized gain (or loss) is the paper profit on stocks you still hold — it's what you'd make if you sold right now, but haven't yet. A realized gain (or loss) is locked in after you actually sell. Only realized gains count as actual profit.
+
+**Why does my portfolio value keep changing?**
+Stock prices move constantly during market hours. Your portfolio value is the sum of your cash plus the current value of all your holdings, so it updates every time a stock price changes.
+
+**What is a concentration warning?**
+If one stock makes up more than 30% of your portfolio value, StockPilot warns you. In real investing, having too much of your money in one company is risky — if that company has a bad day, it can hurt your whole portfolio.
+
+**Can I reset my portfolio?**
+Your teacher controls portfolio resets for class sessions. In Solo mode, you can reset once per simulation from Settings → Reset Portfolio.
+
+---
+
+### Competition & Leaderboard
+
+**How is the leaderboard ranked?**
+The leaderboard ranks students by total portfolio value (cash + holdings). Percentage gain is shown alongside it. Everyone starts equal, so the best strategy — not the biggest bet — wins.
+
+**Can I hide myself from the leaderboard?**
+Yes. You can toggle your own visibility on the leaderboard from the leaderboard page using the "Hide for me" button. Other students won't see your rank or portfolio value while you're hidden.
+
+**What happens at the end of the simulation?**
+When your teacher ends the session, a results screen shows the final leaderboard with a podium for the top 3 finishers. Your personal summary — final value, % gain, best stock, XP earned — is shown on your card.
+
+---
+
+### Technical Issues
+
+**Prices aren't updating — what's wrong?**
+If prices seem frozen, check the "Prices may be delayed" chip near the stock prices. This means the live data connection is temporarily interrupted. Prices will resume automatically when the connection restores.
+
+**I see "Using simulated data" — what does that mean?**
+The Finnhub API (which provides real stock prices) is temporarily unavailable. StockPilot has switched to pre-built mock prices so you can keep trading. Your trades are still recorded normally.
+
+**My portfolio value seems wrong after a trade.**
+Refresh the page. If the problem persists, it may be a display delay. Your actual balance and holdings in the database are updated immediately on every trade.
+
+**I forgot my password.**
+On the login screen, click **"Forgot password?"** and enter your email. You'll receive a reset link within a few minutes.
+
+---
+
 *End of StockPilot Product Requirements Document v1.0*
-*Total sections: 69 | Author: Brayden Sun | Last updated: 2026-05-13*
+*Total sections: 73 | Author: Brayden Sun | Last updated: 2026-05-13*
