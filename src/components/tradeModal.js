@@ -1,3 +1,7 @@
+// tradeModal.js — buy/sell order entry
+// Validates the trade (sufficient balance or shares), calculates the 0.5% fee,
+// updates state (balance + holdings), records the transaction, and awards XP.
+
 import { getState, adjustBalance, buyShares, sellShares, recordTx, awardXP } from '../state/store.js'
 import { getPrice } from '../api/prices.js'
 import { getStock } from '../data/stocks.js'
@@ -293,6 +297,7 @@ function executeTrade() {
 
   if (tab === 'buy') {
     const total = subtotal + fee
+    // Reject the trade if the user can't cover shares + fee
     if (total > state.user.balance) {
       toast(`Insufficient balance — need ${pc(total)}`, 'error')
       return

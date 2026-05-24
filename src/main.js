@@ -1,3 +1,8 @@
+// main.js — app entry point
+// Boots the app: seeds prices, renders the navbar, then mounts the correct
+// page based on the URL hash. Hash changes (clicking nav links) trigger
+// unmount → mount so only one page is active at a time.
+
 import './style.css'
 import { initNavbar } from './components/navbar.js'
 import { initPrices, tick } from './api/prices.js'
@@ -58,9 +63,34 @@ function renderLeaderboard(main) {
   `
 }
 
+// Show the narrow-screen banner (PRD §19.7) when viewport is under 1024px.
+// The user can dismiss it to continue anyway.
+function initNarrowBanner() {
+  const banner = document.getElementById('narrow-banner')
+  const dismiss = document.getElementById('narrow-dismiss')
+  if (!banner) return
+
+  const check = () => {
+    if (window.innerWidth < 1024 && !sessionStorage.getItem('narrow-dismissed')) {
+      banner.classList.remove('hidden')
+    } else {
+      banner.classList.add('hidden')
+    }
+  }
+
+  dismiss?.addEventListener('click', () => {
+    sessionStorage.setItem('narrow-dismissed', '1')
+    banner.classList.add('hidden')
+  })
+
+  window.addEventListener('resize', check)
+  check()
+}
+
 function init() {
   initPrices()
   initNavbar()
+  initNarrowBanner()
 
   window.addEventListener('hashchange', () => mount(getRoute()))
   mount(getRoute())

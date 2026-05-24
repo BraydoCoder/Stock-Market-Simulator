@@ -1,6 +1,11 @@
+// store.js — single source of truth for all app state
+// Uses a simple pub/sub pattern: call subscribe(fn) to listen for changes,
+// call any mutator (buyShares, adjustBalance, etc.) to update state and notify all listeners.
+// State is persisted to localStorage so it survives page refreshes.
+
 import { STARTING_BALANCE } from '../config.js'
 
-const KEY = 'stockpilot_v1'
+const KEY = 'stockpilot_v1' // localStorage key
 
 const DEFAULT = {
   user: { displayName: 'Pilot', balance: STARTING_BALANCE, xp: 0, level: 1 },
@@ -70,6 +75,7 @@ export function adjustBalance(delta) {
 export function buyShares(symbol, qty, price) {
   const h = state.holdings[symbol]
   if (h) {
+    // Weighted average cost: keeps track of true avg even across multiple buys
     const total = h.shares + qty
     h.avgCost = (h.shares * h.avgCost + qty * price) / total
     h.shares  = total

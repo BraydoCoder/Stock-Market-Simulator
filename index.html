@@ -9,6 +9,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body class="bg-bg text-text-primary font-body min-h-screen antialiased">
+  <!-- Narrow-screen banner (PRD §19.7): shown on screens < 1024px -->
+  <div id="narrow-banner" class="hidden fixed inset-0 z-[999] bg-bg flex items-center justify-center p-6">
+    <div class="text-center max-w-sm">
+      <div class="text-4xl mb-4">✈</div>
+      <h1 class="font-display font-bold text-xl text-accent-primary mb-2">STOCKPILOT</h1>
+      <p class="text-text-secondary text-sm leading-relaxed">
+        StockPilot works best on a desktop browser.<br>Some features may not display correctly on smaller screens.
+      </p>
+      <button id="narrow-dismiss" class="mt-6 px-4 py-2 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary transition-colors">
+        Continue anyway
+      </button>
+    </div>
+  </div>
+
   <div id="app">
     <div id="navbar"></div>
     <main id="main-content" class="pt-14"></main>
