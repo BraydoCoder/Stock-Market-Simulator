@@ -2,11 +2,13 @@
 // Validates the trade (sufficient balance or shares), calculates the 0.5% fee,
 // updates state (balance + holdings), records the transaction, and awards XP.
 
-import { getState, adjustBalance, buyShares, sellShares, recordTx, awardXP } from '../state/store.js'
+import { getState, adjustBalance, buyShares, sellShares, recordTx, awardXP, addOrder } from '../state/store.js'
 import { getPrice } from '../api/prices.js'
 import { getStock } from '../data/stocks.js'
 import { pc, pct, shares as fmtShares, gainClass } from '../utils/format.js'
 import { toast } from './toast.js'
+import { showLevelUp } from './levelUp.js'
+import { checkAchievements } from '../utils/achievements.js'
 import { FEE_RATE } from '../config.js'
 
 let currentSymbol = null
@@ -14,9 +16,9 @@ let tab = 'buy'
 let orderType = 'market'
 let priceListener = null
 
-export function openTradeModal(symbol) {
+export function openTradeModal(symbol, defaultTab = 'buy') {
   currentSymbol = symbol
-  tab = 'buy'
+  tab = defaultTab
   orderType = 'market'
   renderModal()
 
@@ -125,10 +127,11 @@ function bodyHTML() {
           </button>
         `).join('')}
       </div>
+      ${orderType === 'limit' ? `<div class="text-[10px] text-text-muted mt-1">Order executes when price reaches your target.</div>` : ''}
+      ${orderType === 'stop-loss' ? `<div class="text-[10px] text-warning mt-1">Auto-sells if price drops to your stop price.</div>` : ''}
     </div>
 
     ${orderType !== 'market' ? `
-    <!-- Limit / stop price -->
     <div>
       <label class="text-xs text-text-muted uppercase tracking-wide mb-1.5 block">
         ${orderType === 'limit' ? 'Limit Price (PC$)' : 'Stop Price (PC$)'}
@@ -136,9 +139,6 @@ function bodyHTML() {
       <input id="limit-price" type="number" min="0.01" step="0.01"
         value="${p.price.toFixed(2)}"
         class="w-full bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
-      <div class="text-[10px] text-text-muted mt-1">
-        ${orderType === 'limit' ? 'Order executes immediately at or below this price' : 'Order executes if price drops to this level'}
-      </div>
     </div>
     ` : ''}
 
@@ -160,7 +160,10 @@ function bodyHTML() {
             </button>
           `).join('')}
         </div>
-        <div class="text-[10px] text-text-muted mt-1.5">You own ${fmtShares(ownedShares)} shares</div>
+        <div class="text-[10px] text-text-muted mt-1.5">You own ${fmtShares(ownedShares)} shares · avg cost ${pc(holding?.avgCost ?? 0)}</div>
+      ` : ''}
+      ${tab === 'buy' ? `
+        <div class="text-[10px] text-text-muted mt-1.5">Balance: ${pc(balance)}</div>
       ` : ''}
     </div>
 
@@ -169,21 +172,15 @@ function bodyHTML() {
       ${costHTML()}
     </div>
 
-    <!-- Available -->
-    <div class="text-xs text-text-muted">
-      ${tab === 'buy'
-        ? `Available: <span class="text-text-secondary font-medium">${pc(balance)}</span>`
-        : `Holding: <span class="text-text-secondary font-medium">${fmtShares(ownedShares)} shares</span>
-           ${holding ? `· avg cost <span class="font-medium">${pc(holding.avgCost)}</span>` : ''}`
-      }
-    </div>
+    <!-- Balance after trade -->
+    <div id="balance-after" class="text-xs text-text-muted">${balanceAfterHTML()}</div>
 
     <!-- CTA -->
     <button id="confirm-trade" class="w-full py-3 rounded-xl font-bold text-sm transition-colors
       ${tab === 'buy'
         ? 'bg-gain hover:bg-gain/90 text-bg'
         : 'bg-loss hover:bg-loss/90 text-white'}">
-      ${tab === 'buy' ? 'Buy' : 'Sell'} ${currentSymbol}
+      ${orderType === 'market' ? (tab === 'buy' ? 'Buy' : 'Sell') : 'Place Order'} ${currentSymbol}
     </button>
   `
 }
@@ -212,6 +209,18 @@ function costHTML() {
   `
 }
 
+function balanceAfterHTML() {
+  const qty = parseFloat(document.getElementById('qty-input')?.value ?? 1) || 0
+  const p = getPrice(currentSymbol)
+  const execPrice = orderType === 'market' ? p.price : (parseFloat(document.getElementById('limit-price')?.value) || p.price)
+  const subtotal = qty * execPrice
+  const fee = Math.ceil(subtotal * FEE_RATE * 100) / 100
+  const balance = getState().user.balance
+  const after = tab === 'buy' ? balance - (subtotal + fee) : balance + (subtotal - fee)
+  const cls = after < 0 ? 'text-loss' : 'text-text-muted'
+  return `Balance after trade: <span class="${cls} font-medium">${pc(Math.max(after, 0))}</span>`
+}
+
 function refreshPrice() {
   const section = document.getElementById('modal-price-section')
   if (section) section.innerHTML = priceHTML()
@@ -221,6 +230,8 @@ function refreshPrice() {
 function updateCost() {
   const el = document.getElementById('cost-breakdown')
   if (el) el.innerHTML = costHTML()
+  const ba = document.getElementById('balance-after')
+  if (ba) ba.innerHTML = balanceAfterHTML()
 }
 
 function bindEvents() {
@@ -269,14 +280,13 @@ function bindBodyEvents() {
   document.querySelectorAll('.pct-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const ownedShares = getState().holdings[currentSymbol]?.shares ?? 0
-      const pct = parseInt(btn.dataset.pct)
-      qtyInput.value = (ownedShares * pct / 100).toFixed(4)
+      const p = parseInt(btn.dataset.pct)
+      qtyInput.value = (ownedShares * p / 100).toFixed(4)
       updateCost()
     })
   })
 
   document.getElementById('limit-price')?.addEventListener('input', updateCost)
-
   document.getElementById('confirm-trade')?.addEventListener('click', executeTrade)
 }
 
@@ -291,9 +301,31 @@ function executeTrade() {
 
   if (execPrice <= 0) { toast('Invalid price', 'error'); return }
 
+  // Non-market orders go into the pending queue instead of executing immediately
+  if (orderType !== 'market') {
+    const state = getState()
+    if (tab === 'buy') {
+      const total = qty * execPrice + Math.ceil(qty * execPrice * FEE_RATE * 100) / 100
+      if (total > state.user.balance) { toast('Insufficient balance for this order', 'error'); return }
+    } else {
+      const owned = state.holdings[currentSymbol]?.shares ?? 0
+      if (qty > owned + 0.000001) { toast('Not enough shares', 'error'); return }
+    }
+    addOrder({ type: orderType, side: tab, symbol: currentSymbol, qty, targetPrice: execPrice })
+    toast(`${orderType === 'limit' ? '🎯 Limit' : '🛡️ Stop-loss'} order placed for ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
+    closeModal()
+    return
+  }
+
   const subtotal = qty * execPrice
   const fee = Math.ceil(subtotal * FEE_RATE * 100) / 100
   const state = getState()
+
+  // For large trades, confirm with the user before executing
+  if (subtotal >= 1000) {
+    const msg = `Confirm ${tab === 'buy' ? 'purchase' : 'sale'} of ${fmtShares(qty)} ${currentSymbol} for ${pc(tab === 'buy' ? subtotal + fee : subtotal - fee)}?`
+    if (!confirm(msg)) return
+  }
 
   if (tab === 'buy') {
     const total = subtotal + fee
@@ -304,23 +336,27 @@ function executeTrade() {
     }
     adjustBalance(-total)
     buyShares(currentSymbol, qty, execPrice)
-    recordTx({ type: 'buy', symbol: currentSymbol, qty, price: execPrice, fee, total })
+    recordTx({ type: 'buy', symbol: currentSymbol, qty, price: execPrice, fee, total, orderType: 'market' })
     const leveled = awardXP(Math.max(1, Math.round(subtotal / 100)))
+    checkAchievements()
     toast(`Bought ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
-    if (leveled) setTimeout(() => toast(`Level up! You're now level ${getState().user.level}!`, 'info'), 500)
+    if (leveled) setTimeout(() => showLevelUp(getState().user.level), 500)
   } else {
     const holding = state.holdings[currentSymbol]
     if (!holding || qty > holding.shares + 0.000001) {
       toast(`Not enough shares — you own ${fmtShares(holding?.shares ?? 0)}`, 'error')
       return
     }
+    const realizedGain = Math.round((execPrice - holding.avgCost) * qty * 100) / 100
     const proceeds = subtotal - fee
     adjustBalance(proceeds)
     sellShares(currentSymbol, qty)
-    recordTx({ type: 'sell', symbol: currentSymbol, qty, price: execPrice, fee, total: proceeds })
+    recordTx({ type: 'sell', symbol: currentSymbol, qty, price: execPrice, fee, total: proceeds, realizedGain, orderType: 'market' })
     const leveled = awardXP(Math.max(1, Math.round(subtotal / 200)))
-    toast(`Sold ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
-    if (leveled) setTimeout(() => toast(`Level up! You're now level ${getState().user.level}!`, 'info'), 500)
+    checkAchievements()
+    const gainMsg = realizedGain >= 0 ? ` (+${pc(realizedGain)})` : ` (${pc(realizedGain)})`
+    toast(`Sold ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}${gainMsg}`, 'success')
+    if (leveled) setTimeout(() => showLevelUp(getState().user.level), 500)
   }
 
   closeModal()

@@ -1,17 +1,17 @@
-import { getState, subscribe, xpProgress, resetPortfolio } from '../state/store.js'
+// dashboard.js — home screen with portfolio summary, movers, achievements, quick trade
+import { getState, subscribe, xpProgress } from '../state/store.js'
 import { getAllPrices, portfolioValue } from '../api/prices.js'
 import { pc, pct, gainClass, relativeTime } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { STOCKS } from '../data/stocks.js'
+import { BADGES } from '../utils/achievements.js'
 
 let unsub = null
 let priceHandler = null
 
 export function mountDashboard(container) {
   render(container)
-
   unsub = subscribe(() => render(container))
-
   priceHandler = () => render(container)
   window.addEventListener('prices-updated', priceHandler)
 }
@@ -30,13 +30,18 @@ function render(container) {
   const portVal = portfolioValue(state.holdings)
   const totalValue = state.user.balance + portVal
   const gain = totalValue - 10000
-  const { pct: xpPct, lo, hi } = xpProgress()
+  const gainPct = (gain / 10000) * 100
+  const { pct: xpPct, hi } = xpProgress()
 
   const topMovers = [...prices.entries()]
     .sort((a, b) => Math.abs(b[1].changePct) - Math.abs(a[1].changePct))
-    .slice(0, 5)
+    .slice(0, 6)
 
   const recentTxs = state.transactions.slice(0, 5)
+
+  const recentBadges = BADGES
+    .filter(b => state.achievements.includes(b.id))
+    .slice(-4).reverse()
 
   container.innerHTML = `
     <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -47,14 +52,14 @@ function render(container) {
           <h1 class="text-2xl font-display font-bold text-text-primary">
             Welcome back, ${state.user.displayName}
           </h1>
-          <p class="text-text-muted text-sm mt-0.5">Here's your portfolio at a glance</p>
+          <p class="text-text-muted text-sm mt-0.5">${BADGES.filter(b => state.achievements.includes(b.id)).length} badges · Level ${state.user.level}</p>
         </div>
         <div class="hidden sm:flex items-center gap-2">
-          <span class="text-xs text-text-muted">Lvl ${state.user.level}</span>
+          <span class="text-xs text-text-muted">${state.user.xp.toLocaleString()} XP</span>
           <div class="w-32 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
             <div class="h-full bg-accent-secondary rounded-full transition-all duration-700" style="width:${xpPct}%"></div>
           </div>
-          <span class="text-xs text-text-muted">${state.user.xp} XP</span>
+          <span class="text-xs text-text-muted">${hi.toLocaleString()}</span>
         </div>
       </div>
 
@@ -63,7 +68,7 @@ function render(container) {
         ${statCard('Total Value', pc(totalValue), gain, 'Portfolio net worth')}
         ${statCard('Cash Balance', pc(state.user.balance), null, 'Available to trade')}
         ${statCard('Invested', pc(portVal), null, 'Current market value')}
-        ${statCard('Total P&L', pc(gain), gain, 'Since start')}
+        ${statCard(`P&L (${pct(gainPct, false)})`, `${gain >= 0 ? '+' : ''}${pc(gain)}`, gain, 'Since start')}
       </div>
 
       <!-- Main grid -->
@@ -94,8 +99,9 @@ function render(container) {
 
           <!-- Recent activity -->
           <div class="bg-surface border border-border rounded-2xl overflow-hidden">
-            <div class="px-5 py-4 border-b border-border">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 class="font-semibold text-text-primary">Recent Activity</h2>
+              <a href="#portfolio" class="text-xs text-accent-primary hover:underline">History →</a>
             </div>
             ${recentTxs.length
               ? `<div class="divide-y divide-border">${recentTxs.map(txRow).join('')}</div>`
@@ -103,6 +109,30 @@ function render(container) {
           </div>
 
         </div>
+      </div>
+
+      <!-- Achievements widget -->
+      <div class="bg-surface border border-border rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 class="font-semibold text-text-primary">Achievements</h2>
+            <div class="text-xs text-text-muted mt-0.5">${state.achievements.length} / ${BADGES.length} badges unlocked</div>
+          </div>
+          <a href="#achievements" class="text-xs text-accent-primary hover:underline">View all →</a>
+        </div>
+        ${recentBadges.length
+          ? `<div class="flex gap-3 px-5 py-4 flex-wrap">
+              ${recentBadges.map(b => `
+                <div class="flex items-center gap-2 bg-surface-elevated rounded-xl px-3 py-2 border border-accent-secondary/30">
+                  <span class="text-xl">${b.icon}</span>
+                  <div>
+                    <div class="text-xs font-semibold text-text-primary">${b.name}</div>
+                    <div class="text-[10px] text-accent-secondary">Unlocked</div>
+                  </div>
+                </div>
+              `).join('')}
+             </div>`
+          : `<div class="px-5 py-6 text-sm text-text-muted">Make your first trade to earn badges!</div>`}
       </div>
 
       <!-- Quick trade -->
@@ -122,13 +152,6 @@ function render(container) {
         </div>
       </div>
 
-      <!-- Reset (dev) -->
-      <div class="flex justify-end">
-        <button id="reset-btn" class="text-xs text-text-muted hover:text-loss transition-colors">
-          Reset Portfolio
-        </button>
-      </div>
-
     </div>
   `
 
@@ -140,12 +163,12 @@ function render(container) {
     btn.addEventListener('click', () => openTradeModal(btn.dataset.trade))
   })
 
-  container.getElementById?.('reset-btn') ?? container.querySelector('#reset-btn')
-    ?.addEventListener('click', () => {
-      if (confirm('Reset your portfolio to PC$10,000? This cannot be undone.')) {
-        resetPortfolio()
-      }
-    })
+  container.querySelector('#reset-btn')?.addEventListener('click', () => {
+    if (confirm('Reset your portfolio to PC$10,000? This cannot be undone.')) {
+      const { resetPortfolio } = window.__store__ ?? {}
+      if (resetPortfolio) resetPortfolio()
+    }
+  })
 }
 
 function statCard(label, value, gain, sub) {
@@ -179,7 +202,7 @@ function holdingsTable(holdings, prices) {
           </tr>
         </thead>
         <tbody class="divide-y divide-border">
-          ${entries.map(([sym, h]) => {
+          ${entries.slice(0, 6).map(([sym, h]) => {
             const p = prices.get(sym) ?? { price: 0, changePct: 0 }
             const val = h.shares * p.price
             const pl = (p.price - h.avgCost) * h.shares
