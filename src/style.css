@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #111827; }
+  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+}
+
+@layer utilities {
+  .flash-green {
+    animation: flashGreen 0.6s ease-out;
+  }
+  .flash-red {
+    animation: flashRed 0.6s ease-out;
+  }
+}
+
+@keyframes flashGreen {
+  0%   { background-color: rgba(16, 185, 129, 0.35); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashRed {
+  0%   { background-color: rgba(239, 68, 68, 0.35); }
+  100% { background-color: transparent; }
+}
+
+/* Toast pointer-events fix */
+#toast-container > * { pointer-events: all; }
+
+/* Smooth page transition */
+#main-content { transition: opacity 0.15s ease; }
