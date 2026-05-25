@@ -4,9 +4,10 @@
 //
 //   Real mode  (API key present):
 //     - initPrices() seeds UI instantly with base prices, then fetches all 37
-//       stocks from Finnhub (staggered at 150ms each to stay inside the
-//       60 req/min free-tier limit).
-//     - startFinnhubPolling() re-fetches all stocks every 60 seconds.
+//       stocks from Finnhub staggered at 1100ms each (~33 req/min, well under
+//       the 60 req/min free-tier limit). Real prices trickle in over ~41s.
+//     - startFinnhubPolling() re-fetches all stocks every 120s (after the
+//       previous batch completes), so batches never overlap.
 //     - tick() does NOT apply a random walk — it only checks orders/alerts
 //       and fires 'prices-updated' so the UI can refresh timestamps.
 //
@@ -43,19 +44,25 @@ export function initPrices() {
   if (FINNHUB_API_KEY) fetchAllRealPrices()
 }
 
-// Starts a 60-second polling loop that keeps all prices fresh from Finnhub.
-// Call this once from main.js after initPrices().
+// Starts a polling loop that re-fetches all prices after the initial batch
+// finishes. Waits 120s before the first repeat so the batches never overlap.
 export function startFinnhubPolling() {
   if (!FINNHUB_API_KEY) return
-  setInterval(fetchAllRealPrices, 60_000)
+  // Initial fetch takes ~37 × 1.1s ≈ 41s. Wait 120s before the next run so
+  // there's always a clean gap between batches.
+  setTimeout(function repeat() {
+    fetchAllRealPrices().then(() => setTimeout(repeat, 120_000))
+  }, 120_000)
 }
 
-// Fetch all 37 stocks from Finnhub, staggered at 150ms each.
-// 37 × 150ms ≈ 5.5s total, well inside the 60 req/min rate limit.
+// Fetch all 37 stocks one at a time, 1100ms apart.
+// 37 × 1.1s = 40.7s total ≈ 33 req/min — well under the 60 req/min free limit.
+// Mock prices are shown instantly on load; real prices trickle in as each
+// request completes.
 async function fetchAllRealPrices() {
   for (const s of STOCKS) {
     await fetchFinnhub(s.symbol)
-    await delay(150)
+    await delay(1100)
   }
   window.dispatchEvent(new Event('prices-updated'))
 }
