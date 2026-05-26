@@ -5,11 +5,16 @@ import { pc, pct, gainClass, relativeTime } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { STOCKS } from '../data/stocks.js'
 import { BADGES } from '../utils/achievements.js'
+import { joinSession, leaveSession, getActiveSession, getActiveSessionId } from '../lib/session.js'
+import { supabase } from '../lib/supabase.js'
 
 let unsub = null
 let priceHandler = null
+let activeSession = null
 
-export function mountDashboard(container) {
+export async function mountDashboard(container) {
+  // Load active session info (non-blocking — renders immediately, refreshes after)
+  activeSession = await getActiveSession()
   render(container)
   unsub = subscribe(() => render(container))
   priceHandler = () => render(container)
@@ -22,6 +27,7 @@ export function unmountDashboard() {
     window.removeEventListener('prices-updated', priceHandler)
     priceHandler = null
   }
+  activeSession = null
 }
 
 function render(container) {
@@ -70,6 +76,9 @@ function render(container) {
         ${statCard('Invested', pc(portVal), null, 'Current market value')}
         ${statCard(`P&L (${pct(gainPct, false)})`, `${gain >= 0 ? '+' : ''}${pc(gain)}`, gain, 'Since start')}
       </div>
+
+      <!-- Class session widget -->
+      ${sessionWidget()}
 
       <!-- Main grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -169,6 +178,103 @@ function render(container) {
       if (resetPortfolio) resetPortfolio()
     }
   })
+
+  // Session join
+  const joinBtn  = container.querySelector('#join-session-btn')
+  const joinErr  = container.querySelector('#join-error')
+  const codeInput = container.querySelector('#join-code-input')
+
+  codeInput?.addEventListener('input', () => {
+    codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  })
+
+  joinBtn?.addEventListener('click', async () => {
+    const code = codeInput?.value.trim()
+    if (!code || code.length < 6) {
+      joinErr.textContent = 'Enter a 6-character code'
+      joinErr.classList.remove('hidden')
+      return
+    }
+    joinBtn.disabled = true
+    joinBtn.textContent = 'Joining…'
+    joinErr.classList.add('hidden')
+    try {
+      const { session } = await joinSession(code)
+      activeSession = session
+      window.dispatchEvent(new Event('session-joined'))
+      render(container)
+    } catch (err) {
+      joinErr.textContent = err.message
+      joinErr.classList.remove('hidden')
+      joinBtn.disabled = false
+      joinBtn.textContent = 'Join'
+    }
+  })
+
+  // Session leave
+  container.querySelector('#leave-session-btn')?.addEventListener('click', () => {
+    if (!confirm('Leave this class session? You can rejoin with the same code.')) return
+    leaveSession()
+    activeSession = null
+    render(container)
+  })
+}
+
+function sessionWidget() {
+  // Only show when Supabase is configured
+  if (!supabase) return ''
+
+  if (activeSession) {
+    const statusColor = activeSession.status === 'active' ? 'text-gain' : 'text-warning'
+    const dot = activeSession.status === 'active'
+      ? 'bg-gain animate-pulse' : 'bg-warning'
+    return `
+      <div class="bg-surface border border-accent-primary/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-accent-primary/10 border border-accent-primary/30 flex items-center justify-center text-lg">🎓</div>
+          <div>
+            <div class="text-sm font-semibold text-text-primary">${activeSession.name}</div>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
+              <span class="text-xs ${statusColor} capitalize">${activeSession.status}</span>
+              <span class="text-xs text-text-muted">· Code: <span class="font-mono font-bold text-text-secondary">${activeSession.join_code}</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="#leaderboard" class="px-3 py-1.5 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-xs font-semibold hover:bg-accent-primary hover:text-bg transition-colors">
+            Leaderboard
+          </a>
+          <button id="leave-session-btn" class="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border text-text-muted text-xs hover:text-loss hover:border-loss/50 transition-colors">
+            Leave
+          </button>
+        </div>
+      </div>
+    `
+  }
+
+  return `
+    <div class="bg-surface border border-border rounded-2xl p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="flex items-center gap-3 flex-1">
+          <div class="w-9 h-9 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-lg">🎓</div>
+          <div>
+            <div class="text-sm font-semibold text-text-primary">Join a Class</div>
+            <div class="text-xs text-text-muted">Enter your teacher's 6-digit join code</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="join-code-input" type="text" maxlength="6" placeholder="ABC123"
+            class="w-28 bg-bg border border-border rounded-lg px-3 py-2 text-sm font-mono font-bold text-text-primary placeholder-text-muted text-center uppercase focus:outline-none focus:border-accent-primary transition-colors tracking-widest" />
+          <button id="join-session-btn"
+            class="px-4 py-2 rounded-lg bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">
+            Join
+          </button>
+        </div>
+      </div>
+      <div id="join-error" class="hidden mt-2 text-xs text-loss"></div>
+    </div>
+  `
 }
 
 function statCard(label, value, gain, sub) {

@@ -173,6 +173,28 @@ export function getPriceHistory(symbol, range = '1D') {
   return history.map((price, i) => ({ ts: now - (points - 1 - i) * stepMs, price }))
 }
 
+// ── Price shock (market events) ───────────────────────────────────────────────
+
+// Applies a one-time multiplier shock from a teacher market event.
+// affects = [{ symbol, multiplier }] — empty array means all stocks.
+export function applyPriceShock(affects) {
+  const targets = affects.length > 0
+    ? affects
+    : STOCKS.map(s => ({ symbol: s.symbol, multiplier: 1 }))   // placeholder; caller provides all-stock mult
+
+  targets.forEach(({ symbol, multiplier }) => {
+    const cur = store.get(symbol)
+    if (!cur) return
+    const price = round2(Math.max(cur.price * multiplier, 0.01))
+    const stock = STOCKS.find(s => s.symbol === symbol)
+    const chg   = round2(price - (stock?.basePrice ?? price))
+    const chgPct = stock ? round2((chg / stock.basePrice) * 100) : 0
+    store.set(symbol, { price, change: chg, changePct: chgPct, prev: cur.price })
+  })
+
+  window.dispatchEvent(new Event('prices-updated'))
+}
+
 // ── Internals ─────────────────────────────────────────────────────────────────
 
 function round2(n) { return Math.round(n * 100) / 100 }

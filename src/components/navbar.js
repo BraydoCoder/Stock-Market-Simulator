@@ -104,6 +104,12 @@ function renderNavbar() {
               <a href="#settings" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
                 ⚙️ Settings
               </a>
+              <a href="#teacher" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
+                🎓 Teacher Panel
+              </a>
+              <button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
+                ↩ Sign Out
+              </button>
             </div>
           </div>
 
@@ -192,6 +198,13 @@ function bindNavEvents() {
     e.stopPropagation()
     dropdown?.classList.toggle('hidden')
     notifDrop?.classList.add('hidden')
+  })
+
+  // Sign out
+  document.getElementById('nav-signout')?.addEventListener('click', async () => {
+    const { signOut } = await import('../utils/auth.js')
+    await signOut()
+    // onAuthStateChange in main.js handles redirecting to auth screen
   })
 
   // Close dropdowns on outside click

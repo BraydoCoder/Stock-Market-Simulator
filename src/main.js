@@ -18,8 +18,16 @@ import { mountStockDetail,  unmountStockDetail  } from './pages/stockDetail.js'
 import { mountAchievements, unmountAchievements } from './pages/achievements.js'
 import { mountSettings,     unmountSettings     } from './pages/settings.js'
 import { mountProfile,      unmountProfile      } from './pages/profile.js'
+import { mountAuth,         unmountAuth         } from './pages/auth.js'
+import { mountLeaderboard,  unmountLeaderboard  } from './pages/leaderboard.js'
+import { mountTeacher,     unmountTeacher      } from './pages/teacher.js'
+import { mountResults,     unmountResults      } from './pages/results.js'
 import { startTutorial } from './components/tutorial.js'
 import { checkAchievements } from './utils/achievements.js'
+import { supabase } from './lib/supabase.js'
+import { getSession } from './utils/auth.js'
+import { startMarketEventListener, stopMarketEventListener } from './lib/marketEvents.js'
+import { getActiveSessionId } from './lib/session.js'
 
 // Expose STOCKS for use in achievement checks (avoids circular imports)
 window.__STOCKS__ = { STOCKS }
@@ -33,6 +41,8 @@ function getRoute() {
   if (hash.startsWith('#portfolio'))     return { name: 'portfolio' }
   if (hash.startsWith('#achievements'))  return { name: 'achievements' }
   if (hash.startsWith('#leaderboard'))   return { name: 'leaderboard' }
+  if (hash.startsWith('#teacher'))       return { name: 'teacher' }
+  if (hash.startsWith('#results'))       return { name: 'results' }
   if (hash.startsWith('#settings'))      return { name: 'settings' }
   if (hash.startsWith('#profile'))       return { name: 'profile' }
   return { name: 'dashboard' }
@@ -48,6 +58,10 @@ function unmountCurrent() {
     case 'achievements': unmountAchievements(); break
     case 'settings':     unmountSettings();     break
     case 'profile':      unmountProfile();      break
+    case 'leaderboard':  unmountLeaderboard();  break
+    case 'teacher':      unmountTeacher();      break
+    case 'results':      unmountResults();      break
+    case 'auth':         unmountAuth();         break
   }
 }
 
@@ -66,24 +80,10 @@ function mount(route) {
     case 'achievements': mountAchievements(main, subscribe);           break
     case 'settings':     mountSettings(main);                          break
     case 'profile':      mountProfile(main);                           break
-    case 'leaderboard':  renderLeaderboard(main);                      break
+    case 'leaderboard':  mountLeaderboard(main);                       break
+    case 'teacher':      mountTeacher(main);                           break
+    case 'results':      mountResults(main);                           break
   }
-}
-
-function renderLeaderboard(main) {
-  main.innerHTML = `
-    <div class="max-w-7xl mx-auto px-4 py-6">
-      <h1 class="text-2xl font-display font-bold text-text-primary mb-6">Leaderboard</h1>
-      <div class="bg-surface border border-border rounded-2xl p-10 text-center text-text-muted">
-        <div class="text-5xl mb-4">🏆</div>
-        <div class="text-lg font-semibold text-text-primary mb-2">Class Leaderboard</div>
-        <div class="text-sm max-w-sm mx-auto">Real-time multiplayer rankings require the backend (Supabase). Coming in v2!</div>
-        <a href="#profile" class="inline-block mt-6 px-5 py-2.5 rounded-xl bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">
-          View Your Stats →
-        </a>
-      </div>
-    </div>
-  `
 }
 
 // Show the narrow-screen banner (PRD §19.7) when viewport is under 1024px.
@@ -109,34 +109,100 @@ function initNarrowBanner() {
   check()
 }
 
-function init() {
-  // Boot price layer first — seeds mock prices immediately, then kicks off
-  // real Finnhub fetches in the background if an API key is configured.
-  initPrices()
+let sessionWatcher = null
 
-  // If API key is present, start the 60-second refresh loop.
-  // Otherwise, run the 3-second simulation tick.
+function watchSessionStatus() {
+  if (!supabase) return
+  const sessionId = getActiveSessionId()
+  if (!sessionId) return
+
+  if (sessionWatcher) supabase.removeChannel(sessionWatcher)
+
+  sessionWatcher = supabase
+    .channel(`session-status:${sessionId}`)
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'sessions',
+      filter: `id=eq.${sessionId}`,
+    }, (payload) => {
+      if (payload.new?.status === 'ended') {
+        // Auto-redirect every student to the results screen
+        window.location.hash = '#results'
+      }
+    })
+    .subscribe()
+}
+
+function bootApp() {
+  initPrices()
   if (FINNHUB_API_KEY) {
     startFinnhubPolling()
-    // Still run tick every 3s so orders/alerts/snapshots are checked regularly.
-    setInterval(tick, 3000)
-  } else {
-    setInterval(tick, 3000)
   }
+  setInterval(tick, 3000)
 
   initNavbar()
   initNarrowBanner()
 
-  // Check achievements on every state change
   subscribe(() => checkAchievements())
 
   window.addEventListener('hashchange', () => mount(getRoute()))
   mount(getRoute())
 
-  // Show tutorial on very first visit
   if (!getState().settings.tutorialDone) {
     setTimeout(startTutorial, 1200)
   }
+
+  // Start listening for teacher market events if already in a session
+  if (supabase && getActiveSessionId()) {
+    startMarketEventListener()
+    watchSessionStatus()
+  }
+
+  // Re-start listeners whenever the user joins a new session from the dashboard
+  window.addEventListener('session-joined', () => {
+    stopMarketEventListener()
+    startMarketEventListener()
+    watchSessionStatus()
+  })
+}
+
+async function init() {
+  const main = document.getElementById('main-content')
+
+  // If Supabase is configured, gate the app behind auth.
+  if (supabase) {
+    const session = await getSession()
+
+    if (!session) {
+      // Show auth page; wait for successful login before booting the app.
+      currentRoute = 'auth'
+      mountAuth(main)
+
+      window.addEventListener('auth-ready', () => {
+        unmountAuth()
+        currentRoute = null
+        bootApp()
+      }, { once: true })
+      return
+    }
+
+    // Already logged in — listen for future sign-outs to return to auth screen.
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        unmountCurrent()
+        currentRoute = 'auth'
+        mountAuth(main)
+        window.addEventListener('auth-ready', () => {
+          unmountAuth()
+          currentRoute = null
+          bootApp()
+        }, { once: true })
+      }
+    })
+  }
+
+  bootApp()
 }
 
 init()

@@ -10,6 +10,7 @@ import { toast } from './toast.js'
 import { showLevelUp } from './levelUp.js'
 import { checkAchievements } from '../utils/achievements.js'
 import { FEE_RATE } from '../config.js'
+import { syncPortfolio, syncTransaction } from '../lib/session.js'
 
 let currentSymbol = null
 let tab = 'buy'
@@ -336,11 +337,14 @@ function executeTrade() {
     }
     adjustBalance(-total)
     buyShares(currentSymbol, qty, execPrice)
-    recordTx({ type: 'buy', symbol: currentSymbol, qty, price: execPrice, fee, total, orderType: 'market' })
+    const txBuy = { type: 'buy', symbol: currentSymbol, qty, price: execPrice, fee, total, orderType: 'market' }
+    recordTx(txBuy)
     const leveled = awardXP(Math.max(1, Math.round(subtotal / 100)))
     checkAchievements()
     toast(`Bought ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
     if (leveled) setTimeout(() => showLevelUp(getState().user.level), 500)
+    syncTransaction(txBuy)
+    syncPortfolio()
   } else {
     const holding = state.holdings[currentSymbol]
     if (!holding || qty > holding.shares + 0.000001) {
@@ -351,12 +355,15 @@ function executeTrade() {
     const proceeds = subtotal - fee
     adjustBalance(proceeds)
     sellShares(currentSymbol, qty)
-    recordTx({ type: 'sell', symbol: currentSymbol, qty, price: execPrice, fee, total: proceeds, realizedGain, orderType: 'market' })
+    const txSell = { type: 'sell', symbol: currentSymbol, qty, price: execPrice, fee, total: proceeds, realizedGain, orderType: 'market' }
+    recordTx(txSell)
     const leveled = awardXP(Math.max(1, Math.round(subtotal / 200)))
     checkAchievements()
     const gainMsg = realizedGain >= 0 ? ` (+${pc(realizedGain)})` : ` (${pc(realizedGain)})`
     toast(`Sold ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}${gainMsg}`, 'success')
     if (leveled) setTimeout(() => showLevelUp(getState().user.level), 500)
+    syncTransaction(txSell)
+    syncPortfolio()
   }
 
   closeModal()
