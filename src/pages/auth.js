@@ -27,8 +27,7 @@ function render() {
         <!-- Logo -->
         <div class="text-center mb-8">
           <div class="inline-flex items-center gap-2 mb-3">
-            <span class="text-3xl">✈</span>
-            <span class="text-2xl font-display font-bold text-text-primary">StockPilot</span>
+            <span class="text-2xl font-display font-bold text-accent-primary tracking-widest">STOCKPILOT</span>
           </div>
           <p class="text-sm text-text-muted">The gamified stock market simulator</p>
         </div>
@@ -178,7 +177,6 @@ function showConfirmation() {
   container.innerHTML = `
     <div class="min-h-screen bg-bg flex items-center justify-center px-4">
       <div class="w-full max-w-sm text-center">
-        <div class="text-5xl mb-4">✉</div>
         <h2 class="text-xl font-display font-bold text-text-primary mb-2">Check your email</h2>
         <p class="text-sm text-text-muted mb-6">
           We sent a confirmation link to your email address.<br>

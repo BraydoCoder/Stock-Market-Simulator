@@ -231,7 +231,7 @@ function sessionWidget() {
     return `
       <div class="bg-surface border border-accent-primary/30 rounded-2xl p-4 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-accent-primary/10 border border-accent-primary/30 flex items-center justify-center text-lg">🎓</div>
+          <div class="w-9 h-9 rounded-xl bg-accent-primary/10 border border-accent-primary/30 flex items-center justify-center text-xs font-bold text-accent-primary">EDU</div>
           <div>
             <div class="text-sm font-semibold text-text-primary">${activeSession.name}</div>
             <div class="flex items-center gap-1.5 mt-0.5">
@@ -257,7 +257,7 @@ function sessionWidget() {
     <div class="bg-surface border border-border rounded-2xl p-4">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3">
         <div class="flex items-center gap-3 flex-1">
-          <div class="w-9 h-9 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-lg">🎓</div>
+          <div class="w-9 h-9 rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xs font-bold text-text-muted">EDU</div>
           <div>
             <div class="text-sm font-semibold text-text-primary">Join a Class</div>
             <div class="text-xs text-text-muted">Enter your teacher's 6-digit join code</div>

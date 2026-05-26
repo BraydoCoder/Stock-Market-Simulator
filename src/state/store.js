@@ -16,7 +16,8 @@ const DEFAULT = {
   priceAlerts: [],    // price alert definitions
   netWorthHistory: [], // [{ ts, value }] snapshots for the net worth chart
   notifications: [],  // [{ id, type, message, ts, read }]
-  settings: { tradeInsights: true, soundEnabled: false, musicVolume: 50, sfxVolume: 70, tutorialDone: false },
+  watchlist: [],      // array of stock symbols
+  settings: { tradeInsights: true, soundEnabled: false, musicVolume: 50, sfxVolume: 70, tutorialDone: false, theme: 'dark' },
 }
 
 export const XP_THRESHOLDS = [
@@ -47,6 +48,7 @@ function load() {
       priceAlerts:  saved.priceAlerts   ?? [],
       netWorthHistory: saved.netWorthHistory ?? [],
       notifications:   saved.notifications   ?? [],
+      watchlist:       saved.watchlist        ?? [],
     }
   } catch {
     return structuredClone(DEFAULT)
@@ -209,6 +211,19 @@ export function getUnreadCount() {
 export function updateSettings(patch) {
   state.settings = { ...state.settings, ...patch }
   save(); emit()
+}
+
+// ── Watchlist ─────────────────────────────────────────────────────────────────
+
+export function toggleWatchlist(symbol) {
+  const idx = state.watchlist.indexOf(symbol)
+  if (idx >= 0) state.watchlist.splice(idx, 1)
+  else state.watchlist.push(symbol)
+  save(); emit()
+}
+
+export function isWatchlisted(symbol) {
+  return state.watchlist.includes(symbol)
 }
 
 // ── Reset ─────────────────────────────────────────────────────────────────────

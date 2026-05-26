@@ -100,7 +100,7 @@ function showStep(index) {
   document.getElementById('tutorial-title').textContent = step.title
   document.getElementById('tutorial-desc').textContent = step.desc
   document.getElementById('tutorial-back').style.visibility = index === 0 ? 'hidden' : 'visible'
-  document.getElementById('tutorial-next').textContent = index === STEPS.length - 1 ? '🚀 Start Trading!' : 'Next →'
+  document.getElementById('tutorial-next').textContent = index === STEPS.length - 1 ? 'Start Trading!' : 'Next →'
 
   // Update dots
   overlay.querySelectorAll('.dot').forEach((d, i) => {
@@ -136,7 +136,7 @@ function completeTutorial() {
   awardXP(100)
   unlockBadge('tutorial_done')
   checkAchievements()
-  toast('Tutorial complete! +100 XP earned ✈', 'success', 4000)
+  toast('Tutorial complete! +100 XP earned', 'success', 4000)
 }
 
 function endTutorial() {

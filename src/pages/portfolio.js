@@ -162,6 +162,16 @@ function render() {
               : `<div class="text-sm text-text-muted">No holdings to chart.</div>`}
           </div>
 
+          <!-- P&L bar chart -->
+          ${holdings.length > 0 ? `
+          <div class="bg-surface border border-border rounded-2xl p-5">
+            <h2 class="font-semibold text-text-primary mb-4">Unrealized P&L by Holding</h2>
+            <div class="space-y-2">
+              ${plBarChart(holdings)}
+            </div>
+          </div>
+          ` : ''}
+
           <!-- Net worth chart -->
           <div class="bg-surface border border-border rounded-2xl p-5">
             <h2 class="font-semibold text-text-primary mb-4">Net Worth Over Time</h2>
@@ -317,6 +327,27 @@ function card(label, value, cls) {
       <div class="text-xl font-bold font-mono ${cls}">${value}</div>
     </div>
   `
+}
+
+function plBarChart(holdings) {
+  const sorted = [...holdings].sort((a, b) => b.plPct - a.plPct)
+  const maxAbs = Math.max(...sorted.map(h => Math.abs(h.plPct)), 0.01)
+  return sorted.map(({ sym, pl, plPct }) => {
+    const barW = Math.min((Math.abs(plPct) / maxAbs) * 100, 100)
+    const isGain = pl >= 0
+    return `
+      <div class="flex items-center gap-2">
+        <div class="w-12 text-[10px] font-mono font-bold text-text-secondary shrink-0 text-right">${sym}</div>
+        <div class="flex-1 h-5 bg-surface-elevated rounded overflow-hidden relative">
+          <div class="absolute inset-y-0 left-0 ${isGain ? 'bg-gain' : 'bg-loss'} rounded transition-all duration-500"
+            style="width:${barW}%"></div>
+        </div>
+        <div class="w-14 text-[10px] tabular-nums ${isGain ? 'text-gain' : 'text-loss'} shrink-0">
+          ${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%
+        </div>
+      </div>
+    `
+  }).join('')
 }
 
 function stat(label, value) {

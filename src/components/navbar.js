@@ -37,7 +37,7 @@ function renderNavbar() {
 
         <!-- Logo -->
         <a href="#dashboard" class="font-display text-accent-primary font-bold text-base tracking-widest shrink-0 hover:opacity-80 transition-opacity">
-          ✈ STOCKPILOT
+          STOCKPILOT
         </a>
 
         <!-- Nav links -->
@@ -69,15 +69,15 @@ function renderNavbar() {
 
           <!-- Audio mute toggle -->
           <button id="nav-audio-toggle" title="Toggle sound"
-            class="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors text-sm">
-            ${getState().settings.soundEnabled ? '🔊' : '🔇'}
+            class="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors text-[10px] font-bold">
+            ${getState().settings.soundEnabled ? 'SFX' : 'MUT'}
           </button>
 
           <!-- Notification bell -->
           <div class="relative">
             <button id="nav-bell" title="Notifications"
-              class="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors text-sm">
-              🔔
+              class="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-colors text-[10px] font-bold">
+              NOT
             </button>
             <span id="notif-badge" class="absolute -top-1 -right-1 bg-loss text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${getUnreadCount() === 0 ? 'hidden' : ''}">
               ${getUnreadCount()}
@@ -99,13 +99,13 @@ function renderNavbar() {
             <!-- Dropdown -->
             <div id="nav-dropdown" class="hidden absolute right-0 top-10 w-44 bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-50">
               <a href="#profile" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
-                👤 Profile
+                Profile
               </a>
               <a href="#settings" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
-                ⚙️ Settings
+                Settings
               </a>
               <a href="#teacher" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
-                🎓 Teacher Panel
+                Teacher Panel
               </a>
               <button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
                 ↩ Sign Out
@@ -156,10 +156,10 @@ function notifItems() {
 
 function notifIcon(type) {
   switch (type) {
-    case 'achievement': return '🏅'
-    case 'order':       return '🎯'
-    case 'alert':       return '🔔'
-    default:            return 'ℹ️'
+    case 'achievement': return '★'
+    case 'order':       return '↑'
+    case 'alert':       return '!'
+    default:            return '·'
   }
 }
 
@@ -171,7 +171,7 @@ function bindNavEvents() {
     const enabled = !gs().settings.soundEnabled
     updateSettings({ soundEnabled: enabled })
     const btn = document.getElementById('nav-audio-toggle')
-    if (btn) btn.textContent = enabled ? '🔊' : '🔇'
+    if (btn) btn.textContent = enabled ? 'SFX' : 'MUT'
   })
 
   // Bell dropdown

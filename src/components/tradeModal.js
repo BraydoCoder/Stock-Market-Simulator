@@ -313,7 +313,7 @@ function executeTrade() {
       if (qty > owned + 0.000001) { toast('Not enough shares', 'error'); return }
     }
     addOrder({ type: orderType, side: tab, symbol: currentSymbol, qty, targetPrice: execPrice })
-    toast(`${orderType === 'limit' ? '🎯 Limit' : '🛡️ Stop-loss'} order placed for ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
+    toast(`${orderType === 'limit' ? 'Limit' : 'Stop-loss'} order placed for ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
     closeModal()
     return
   }

@@ -41,7 +41,7 @@ export function showLevelUp(level) {
 
       <button id="level-up-dismiss"
         class="px-8 py-3 rounded-xl bg-accent-primary text-bg font-bold hover:bg-accent-primary/90 transition-colors">
-        Keep Trading ✈
+        Keep Trading
       </button>
     </div>
   `

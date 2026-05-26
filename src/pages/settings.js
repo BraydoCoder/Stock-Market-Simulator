@@ -1,5 +1,6 @@
 // settings.js — user preferences: display name, audio, price alerts, danger zone
-import { getState, updateSettings, setDisplayName, addPriceAlert, removePriceAlert, resetPortfolio, subscribe } from '../state/store.js'
+import { getState, updateSettings, setDisplayName, addPriceAlert, removePriceAlert, resetPortfolio, subscribe, toggleWatchlist } from '../state/store.js'
+import { applyTheme } from '../main.js'
 import { STOCKS } from '../data/stocks.js'
 import { pc } from '../utils/format.js'
 import { toast } from '../components/toast.js'
@@ -39,6 +40,25 @@ function render() {
               value="${state.user.displayName}"
               class="flex-1 bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
             <button id="save-name-btn" class="px-4 py-2 rounded-lg bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">Save</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Appearance -->
+      <section class="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <h2 class="font-semibold text-text-primary">Appearance</h2>
+        <div>
+          <label class="text-xs text-text-muted uppercase tracking-wide mb-2 block">Theme</label>
+          <div class="flex gap-2">
+            ${['dark','light'].map(t => `
+              <button data-theme="${t}"
+                class="theme-btn flex-1 py-2 rounded-lg border text-sm font-medium transition-colors
+                ${(s.theme ?? 'dark') === t
+                  ? 'bg-accent-primary text-bg border-accent-primary'
+                  : 'bg-surface-elevated border-border text-text-muted hover:text-text-primary'}">
+                ${t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            `).join('')}
           </div>
         </div>
       </section>
@@ -115,6 +135,27 @@ function render() {
         </div>
       </section>
 
+      <!-- Watchlist -->
+      <section class="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <h2 class="font-semibold text-text-primary">Watchlist</h2>
+        ${state.watchlist.length === 0
+          ? `<div class="text-sm text-text-muted">No stocks on your watchlist. Add them from any stock page.</div>`
+          : `<div class="divide-y divide-border">
+              ${state.watchlist.map(sym => {
+                const stock = STOCKS.find(s => s.symbol === sym)
+                return `
+                  <div class="flex items-center justify-between py-3">
+                    <div>
+                      <span class="font-mono font-semibold text-text-primary">${sym}</span>
+                      <span class="text-text-muted text-xs ml-2">${stock?.name ?? ''}</span>
+                    </div>
+                    <button data-remove-watch="${sym}" class="text-xs text-loss hover:text-loss/80 transition-colors">Remove</button>
+                  </div>
+                `
+              }).join('')}
+             </div>`}
+      </section>
+
       <!-- Danger Zone -->
       <section class="bg-surface border border-loss/30 rounded-2xl p-5 space-y-3">
         <h2 class="font-semibold text-loss">Danger Zone</h2>
@@ -189,6 +230,22 @@ function bindEvents() {
     addPriceAlert({ symbol, direction, threshold })
     toast(`Alert set: ${symbol} ${direction} ${pc(threshold)}`, 'success')
     container.querySelector('#alert-form')?.classList.add('hidden')
+  })
+
+  // Theme
+  container.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const theme = btn.dataset.theme
+      updateSettings({ theme })
+      applyTheme(theme)
+    })
+  })
+
+  // Watchlist remove
+  container.querySelectorAll('[data-remove-watch]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      toggleWatchlist(btn.dataset.removeWatch)
+    })
   })
 
   // Danger zone

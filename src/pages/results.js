@@ -53,18 +53,17 @@ function renderLoading() {
 
 function renderNoSupabase() {
   if (!container) return
-  container.innerHTML = emptyState('🔌', 'No Backend', 'Results require Supabase.', '#dashboard', 'Dashboard')
+  container.innerHTML = emptyState('No Backend', 'Results require Supabase.', '#dashboard', 'Dashboard')
 }
 
 function renderNoSession() {
   if (!container) return
-  container.innerHTML = emptyState('🎓', 'No Session', "You're not enrolled in a class session.", '#dashboard', 'Go to Dashboard')
+  container.innerHTML = emptyState('No Session', "You're not enrolled in a class session.", '#dashboard', 'Go to Dashboard')
 }
 
-function emptyState(icon, title, body, href, label) {
+function emptyState(title, body, href, label) {
   return `
     <div class="max-w-2xl mx-auto px-4 py-12 text-center">
-      <div class="text-5xl mb-4">${icon}</div>
       <div class="text-lg font-semibold text-text-primary mb-2">${title}</div>
       <p class="text-sm text-text-muted mb-6">${body}</p>
       <a href="${href}" class="inline-block px-5 py-2.5 rounded-xl bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">${label}</a>
@@ -92,7 +91,6 @@ function render() {
         <!-- Decorative background glow -->
         <div class="absolute inset-0 bg-gradient-to-b from-accent-primary/5 to-transparent pointer-events-none"></div>
         <div class="relative">
-          <div class="text-6xl mb-3">🏆</div>
           <h1 class="text-3xl font-display font-bold text-text-primary mb-1">Session Complete!</h1>
           <p class="text-text-muted text-sm">${session.name}${duration ? ` · ${duration}` : ''} · ${rows.length} participant${rows.length !== 1 ? 's' : ''}</p>
 
@@ -150,7 +148,7 @@ function render() {
 function myStatsHTML(row, startBal) {
   const gain  = pl(row, startBal)
   const gainP = plPct(row, startBal)
-  const rankLabel = row.rank === 1 ? '🥇 1st' : row.rank === 2 ? '🥈 2nd' : row.rank === 3 ? '🥉 3rd' : `#${row.rank}`
+  const rankLabel = row.rank === 1 ? '1st' : row.rank === 2 ? '2nd' : row.rank === 3 ? '3rd' : `#${row.rank}`
   return `
     <div class="bg-surface border border-accent-secondary/30 rounded-2xl p-5">
       <h2 class="font-semibold text-text-primary mb-4">Your Results</h2>
@@ -184,7 +182,7 @@ function podiumHTML(allRows, startBal) {
   const top3  = allRows.slice(0, 3)
   const order = [top3[1], top3[0], top3[2]]
   const heights = ['h-20', 'h-28', 'h-16']
-  const medals  = ['🥈', '🥇', '🥉']
+  const rankLabels = ['2nd', '1st', '3rd']
   const ranks   = [2, 1, 3]
 
   return `
@@ -197,7 +195,7 @@ function podiumHTML(allRows, startBal) {
           const gain = plPct(r, startBal)
           return `
             <div class="flex flex-col items-center gap-2 flex-1 max-w-[130px]">
-              <div class="text-2xl">${medals[i]}</div>
+              <div class="text-xs font-bold text-text-muted">${rankLabels[i]}</div>
               <div class="w-12 h-12 rounded-full bg-accent-secondary/20 border-2 ${isMe ? 'border-accent-primary' : 'border-accent-secondary/40'} flex items-center justify-center font-bold text-accent-secondary text-base">
                 ${r.display_name[0].toUpperCase()}
               </div>
@@ -219,11 +217,11 @@ function standingRow(r, startBal) {
   const isMe  = r.user_id === currentUid
   const gain  = pl(r, startBal)
   const gainP = plPct(r, startBal)
-  const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`
+  const rankStr = r.rank === 1 ? '1st' : r.rank === 2 ? '2nd' : r.rank === 3 ? '3rd' : `#${r.rank}`
 
   return `
     <div class="flex items-center gap-4 px-5 py-3.5 ${isMe ? 'bg-accent-primary/5 border-l-2 border-accent-primary' : 'hover:bg-surface-elevated/50'} transition-colors">
-      <div class="w-8 text-center text-sm font-bold ${r.rank <= 3 ? 'text-xl leading-none' : 'text-text-muted font-mono'}">${medal}</div>
+      <div class="w-8 text-center text-xs font-bold text-text-muted">${rankStr}</div>
       <div class="w-9 h-9 rounded-full bg-accent-secondary/20 border-2 ${isMe ? 'border-accent-primary' : 'border-accent-secondary/40'} flex items-center justify-center font-bold text-accent-secondary text-sm shrink-0">
         ${r.display_name[0].toUpperCase()}
       </div>

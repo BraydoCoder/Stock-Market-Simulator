@@ -40,6 +40,7 @@ function getRoute() {
   if (hash.startsWith('#stocks'))        return { name: 'stocks' }
   if (hash.startsWith('#portfolio'))     return { name: 'portfolio' }
   if (hash.startsWith('#achievements'))  return { name: 'achievements' }
+  if (hash.startsWith('#leaderboard-project')) return { name: 'leaderboard-project' }
   if (hash.startsWith('#leaderboard'))   return { name: 'leaderboard' }
   if (hash.startsWith('#teacher'))       return { name: 'teacher' }
   if (hash.startsWith('#results'))       return { name: 'results' }
@@ -58,7 +59,8 @@ function unmountCurrent() {
     case 'achievements': unmountAchievements(); break
     case 'settings':     unmountSettings();     break
     case 'profile':      unmountProfile();      break
-    case 'leaderboard':  unmountLeaderboard();  break
+    case 'leaderboard':          unmountLeaderboard();  break
+    case 'leaderboard-project':  unmountLeaderboard();  break
     case 'teacher':      unmountTeacher();      break
     case 'results':      unmountResults();      break
     case 'auth':         unmountAuth();         break
@@ -80,7 +82,8 @@ function mount(route) {
     case 'achievements': mountAchievements(main, subscribe);           break
     case 'settings':     mountSettings(main);                          break
     case 'profile':      mountProfile(main);                           break
-    case 'leaderboard':  mountLeaderboard(main);                       break
+    case 'leaderboard':          mountLeaderboard(main, false); break
+    case 'leaderboard-project':  mountLeaderboard(main, true);  break
     case 'teacher':      mountTeacher(main);                           break
     case 'results':      mountResults(main);                           break
   }
@@ -134,7 +137,12 @@ function watchSessionStatus() {
     .subscribe()
 }
 
+export function applyTheme(theme) {
+  document.documentElement.classList.toggle('light', theme === 'light')
+}
+
 function bootApp() {
+  applyTheme(getState().settings.theme ?? 'dark')
   initPrices()
   if (FINNHUB_API_KEY) {
     startFinnhubPolling()

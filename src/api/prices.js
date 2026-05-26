@@ -208,7 +208,7 @@ function checkPriceAlerts() {
       ? p.price >= alert.threshold
       : p.price <= alert.threshold
     if (triggered) {
-      const msg = `🔔 ${alert.symbol} ${alert.direction === 'above' ? 'rose above' : 'dropped below'} ${pc(alert.threshold)} — now ${pc(p.price)}`
+      const msg = `Alert: ${alert.symbol} ${alert.direction === 'above' ? 'rose above' : 'dropped below'} ${pc(alert.threshold)} — now ${pc(p.price)}`
       toast(msg, 'info', 5000)
       addNotification({ type: 'alert', message: msg })
       deactivatePriceAlert(alert.id)

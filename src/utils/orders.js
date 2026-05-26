@@ -49,7 +49,7 @@ export function processOrders() {
     }
 
     fillOrder(order.id)
-    const msg = `${order.type === 'stop-loss' ? '🛡️ Stop-loss' : '🎯 Limit order'} filled: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.qty} ${order.symbol} @ ${pc(execPrice)}`
+    const msg = `${order.type === 'stop-loss' ? 'Stop-loss' : 'Limit order'} filled: ${order.side === 'buy' ? 'Bought' : 'Sold'} ${order.qty} ${order.symbol} @ ${pc(execPrice)}`
     toast(msg, 'success', 4500)
     addNotification({ type: 'order', message: msg })
   })

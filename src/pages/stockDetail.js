@@ -1,10 +1,10 @@
-// stockDetail.js — individual stock page with Chart.js price chart
+// stockDetail.js — individual stock page with Chart.js price chart + news feed
 import { getPrice, fetchFinnhub, getPriceHistory, isMarketOpen } from '../api/prices.js'
 import { getStock } from '../data/stocks.js'
-import { pc, pct, gainClass } from '../utils/format.js'
+import { pc, pct, gainClass, relativeTime } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { FINNHUB_API_KEY } from '../config.js'
-import { getState } from '../state/store.js'
+import { getState, toggleWatchlist, isWatchlisted } from '../state/store.js'
 import Chart from 'chart.js/auto'
 
 let chart = null
@@ -12,6 +12,9 @@ let priceListener = null
 let currentSymbol = null
 let currentRange = '1D'
 let container = null
+
+// 10-minute in-memory cache for news
+const newsCache = new Map()  // symbol → { ts, articles }
 
 export function mountStockDetail(el, symbol) {
   container = el
@@ -21,6 +24,7 @@ export function mountStockDetail(el, symbol) {
   if (FINNHUB_API_KEY) fetchFinnhub(symbol)
 
   render()
+  fetchNews(symbol)
 
   priceListener = () => {
     updateLivePrice()
@@ -68,11 +72,20 @@ function render() {
           </div>
           <div class="text-text-muted text-sm">${stock?.name ?? ''}</div>
         </div>
-        <div class="text-right">
-          <div id="detail-price" class="text-3xl font-bold font-mono text-text-primary">${pc(p.price)}</div>
-          <div id="detail-change" class="text-sm font-medium mt-0.5 ${dir}">
-            ${p.change >= 0 ? '+' : ''}${pc(p.change)} (${pct(p.changePct)})
+        <div class="flex items-start gap-3">
+          <div class="text-right">
+            <div id="detail-price" class="text-3xl font-bold font-mono text-text-primary">${pc(p.price)}</div>
+            <div id="detail-change" class="text-sm font-medium mt-0.5 ${dir}">
+              ${p.change >= 0 ? '+' : ''}${pc(p.change)} (${pct(p.changePct)})
+            </div>
           </div>
+          <button id="watchlist-btn" title="${isWatchlisted(currentSymbol) ? 'Remove from watchlist' : 'Add to watchlist'}"
+            class="mt-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
+            ${isWatchlisted(currentSymbol)
+              ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
+              : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'}">
+            ${isWatchlisted(currentSymbol) ? 'Watching' : '+ Watch'}
+          </button>
         </div>
       </div>
 
@@ -142,6 +155,15 @@ function render() {
         </div>
 
       </div>
+
+      <!-- News feed (populated async) -->
+      <div id="news-section" class="bg-surface border border-border rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-border">
+          <h2 class="font-semibold text-text-primary">Recent News</h2>
+        </div>
+        <div class="px-5 py-4 text-sm text-text-muted">Loading news...</div>
+      </div>
+
     </div>
   `
 
@@ -160,7 +182,72 @@ function render() {
   container.querySelector('#buy-btn')?.addEventListener('click', () => openTradeModal(currentSymbol))
   container.querySelector('#sell-btn')?.addEventListener('click', () => openTradeModal(currentSymbol))
 
+  container.querySelector('#watchlist-btn')?.addEventListener('click', () => {
+    toggleWatchlist(currentSymbol)
+    const btn = container.querySelector('#watchlist-btn')
+    if (!btn) return
+    const watching = isWatchlisted(currentSymbol)
+    btn.textContent = watching ? 'Watching' : '+ Watch'
+    btn.className = `mt-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+      watching
+        ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
+        : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'
+    }`
+  })
+
   setTimeout(() => buildChart(), 50)
+}
+
+async function fetchNews(symbol) {
+  if (!FINNHUB_API_KEY) {
+    renderNews([])
+    return
+  }
+
+  const cached = newsCache.get(symbol)
+  if (cached && Date.now() - cached.ts < 10 * 60_000) {
+    renderNews(cached.articles)
+    return
+  }
+
+  try {
+    const to   = new Date().toISOString().slice(0, 10)
+    const from = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString().slice(0, 10)
+    const res  = await fetch(
+      `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`,
+      { signal: AbortSignal.timeout(6000) }
+    )
+    const data = res.ok ? await res.json() : []
+    const articles = Array.isArray(data) ? data.slice(0, 5) : []
+    newsCache.set(symbol, { ts: Date.now(), articles })
+    renderNews(articles)
+  } catch {
+    renderNews([])
+  }
+}
+
+function renderNews(articles) {
+  const section = container?.querySelector('#news-section')
+  if (!section) return
+  if (!articles.length) {
+    section.querySelector('div:last-child').innerHTML = `<span class="text-sm text-text-muted">No recent news available.</span>`
+    return
+  }
+  section.querySelector('div:last-child').innerHTML = `
+    <div class="divide-y divide-border">
+      ${articles.map(a => `
+        <a href="${a.url}" target="_blank" rel="noopener noreferrer"
+          class="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 hover:opacity-80 transition-opacity">
+          <div class="text-sm font-medium text-text-primary leading-snug">${a.headline}</div>
+          <div class="flex items-center gap-2 text-[10px] text-text-muted">
+            <span>${a.source}</span>
+            <span>·</span>
+            <span>${relativeTime(a.datetime * 1000)}</span>
+          </div>
+        </a>
+      `).join('')}
+    </div>
+  `
 }
 
 function statItem(label, value) {
@@ -248,7 +335,15 @@ function updateLivePrice() {
   const dir = p.price >= p.prev ? 'text-gain' : 'text-loss'
   const priceEl = container.querySelector('#detail-price')
   const changeEl = container.querySelector('#detail-change')
-  if (priceEl) priceEl.textContent = pc(p.price)
+
+  if (priceEl) {
+    const prev = parseFloat(priceEl.dataset.prev ?? p.price)
+    priceEl.dataset.prev = p.price
+    priceEl.textContent = pc(p.price)
+    priceEl.classList.remove('flash-green', 'flash-red')
+    void priceEl.offsetWidth
+    priceEl.classList.add(p.price >= prev ? 'flash-green' : 'flash-red')
+  }
   if (changeEl) {
     changeEl.className = `text-sm font-medium mt-0.5 ${dir}`
     changeEl.textContent = `${p.change >= 0 ? '+' : ''}${pc(p.change)} (${pct(p.changePct)})`

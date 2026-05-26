@@ -1,7 +1,7 @@
 // stockBrowser.js — 37 stocks with search, sector filter, sortable table, card view
 import { STOCKS, SECTORS } from '../data/stocks.js'
 import { getPrice, fetchFinnhub, isMarketOpen } from '../api/prices.js'
-import { getState } from '../state/store.js'
+import { getState, toggleWatchlist, isWatchlisted } from '../state/store.js'
 import { pc, pct, gainClass } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { FINNHUB_API_KEY } from '../config.js'
@@ -78,19 +78,18 @@ function render() {
         <div class="relative flex-1 max-w-xs">
           <input id="stock-search" type="text" placeholder="Search symbol or name…"
             value="${searchQuery}"
-            class="w-full bg-surface border border-border rounded-xl px-4 py-2.5 pl-9 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-colors" />
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">⌕</span>
+            class="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-colors" />
         </div>
 
         <!-- View toggle -->
         <div class="flex gap-1 bg-surface-elevated rounded-lg p-1 self-start">
           <button data-view="table" class="view-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors
             ${viewMode === 'table' ? 'bg-surface text-text-primary shadow' : 'text-text-muted hover:text-text-primary'}">
-            ☰ Table
+            Table
           </button>
           <button data-view="card" class="view-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors
             ${viewMode === 'card' ? 'bg-surface text-text-primary shadow' : 'text-text-muted hover:text-text-primary'}">
-            ⊞ Cards
+            Cards
           </button>
         </div>
       </div>
@@ -129,6 +128,7 @@ function tableView(stocks, holdings) {
               <th class="text-left px-3 py-3 hidden md:table-cell">Sector</th>
               ${th('price', 'Price', 'text-right px-3 py-3')}
               ${th('change', 'Change', 'text-right px-5 py-3')}
+              <th class="text-right px-3 py-3 hidden sm:table-cell">Watch</th>
               <th class="text-right px-5 py-3">Action</th>
             </tr>
           </thead>
@@ -164,13 +164,20 @@ function cardView(stocks, holdings) {
             </div>
             <div class="text-base font-bold font-mono price-cell text-text-primary tabular-nums" data-sym="${s.symbol}">${pc(p.price)}</div>
             <div class="flex items-center gap-1 mt-1">
-              <span class="text-xs ${gainClass(p.changePct)}">${isUp ? '▲' : '▼'}</span>
               <span class="text-xs ${gainClass(p.changePct)} tabular-nums change-cell" data-sym="${s.symbol}">${pct(p.changePct)}</span>
             </div>
             <div class="text-[10px] text-text-muted mt-0.5 truncate">${s.name}</div>
-            <button data-symbol="${s.symbol}" class="trade-btn mt-3 w-full py-1.5 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-[10px] font-semibold hover:bg-accent-primary hover:text-bg transition-colors">
-              Trade
-            </button>
+            <div class="flex gap-1.5 mt-3">
+              <button data-symbol="${s.symbol}" class="trade-btn flex-1 py-1.5 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-[10px] font-semibold hover:bg-accent-primary hover:text-bg transition-colors">
+                Trade
+              </button>
+              <button data-watch="${s.symbol}" class="watch-btn py-1.5 px-2 rounded-lg border text-[10px] font-semibold transition-colors
+                ${isWatchlisted(s.symbol)
+                  ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
+                  : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40'}">
+                ${isWatchlisted(s.symbol) ? 'Watching' : 'Watch'}
+              </button>
+            </div>
           </div>
         `
       }).join('')}
@@ -202,6 +209,14 @@ function stockRow(s, holdings) {
       </td>
       <td class="px-5 py-3.5 text-right">
         <span class="change-cell tabular-nums text-xs ${gainClass(p.changePct)}" data-sym="${s.symbol}">${pct(p.changePct)}</span>
+      </td>
+      <td class="px-3 py-3.5 text-right hidden sm:table-cell">
+        <button data-watch="${s.symbol}" class="watch-btn px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
+          ${isWatchlisted(s.symbol)
+            ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
+            : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'}">
+          ${isWatchlisted(s.symbol) ? 'Watching' : 'Watch'}
+        </button>
       </td>
       <td class="px-5 py-3.5 text-right">
         <button data-symbol="${s.symbol}" class="trade-btn px-3 py-1.5 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-xs font-semibold hover:bg-accent-primary hover:text-bg transition-colors">
@@ -260,6 +275,22 @@ function bindEvents() {
       const sym = btn.dataset.symbol
       if (FINNHUB_API_KEY) fetchFinnhub(sym)
       openTradeModal(sym)
+    })
+  })
+
+  container.querySelectorAll('.watch-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const sym = btn.dataset.watch
+      toggleWatchlist(sym)
+      const watching = isWatchlisted(sym)
+      btn.textContent = watching ? 'Watching' : 'Watch'
+      btn.classList.toggle('bg-accent-primary/10', watching)
+      btn.classList.toggle('border-accent-primary/50', watching)
+      btn.classList.toggle('text-accent-primary', watching)
+      btn.classList.toggle('bg-surface-elevated', !watching)
+      btn.classList.toggle('border-border', !watching)
+      btn.classList.toggle('text-text-muted', !watching)
     })
   })
 

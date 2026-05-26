@@ -12,7 +12,7 @@ export const BADGES = [
     id: 'first_trade',
     name: 'First Trade',
     desc: 'Execute your first buy order.',
-    icon: '🚀',
+    icon: 'BUY',
     xp: 50,
     check: (s) => s.transactions.some(t => t.type === 'buy'),
   },
@@ -20,7 +20,7 @@ export const BADGES = [
     id: 'first_sell',
     name: 'First Sell',
     desc: 'Execute your first sell order.',
-    icon: '💰',
+    icon: 'SELL',
     xp: 50,
     check: (s) => s.transactions.some(t => t.type === 'sell'),
   },
@@ -28,7 +28,7 @@ export const BADGES = [
     id: 'first_profit',
     name: 'First Profit',
     desc: 'Close a position in the green.',
-    icon: '📈',
+    icon: '+P/L',
     xp: 75,
     check: (s) => s.transactions.some(t => t.type === 'sell' && (t.realizedGain ?? 0) > 0),
   },
@@ -36,7 +36,7 @@ export const BADGES = [
     id: 'first_loss',
     name: 'First Loss',
     desc: 'Sell a position for a loss. Everyone stumbles.',
-    icon: '📉',
+    icon: '-P/L',
     xp: 25,
     check: (s) => s.transactions.some(t => t.type === 'sell' && (t.realizedGain ?? 0) < 0),
   },
@@ -44,7 +44,7 @@ export const BADGES = [
     id: 'diversified_5',
     name: 'Diversified 5',
     desc: 'Hold 5 different stocks at the same time.',
-    icon: '🗂️',
+    icon: 'DIV5',
     xp: 100,
     check: (s) => Object.keys(s.holdings).length >= 5,
   },
@@ -52,7 +52,7 @@ export const BADGES = [
     id: 'diversified_10',
     name: 'Diversified 10',
     desc: 'Hold 10 different stocks at the same time.',
-    icon: '🌐',
+    icon: 'D10',
     xp: 200,
     check: (s) => Object.keys(s.holdings).length >= 10,
   },
@@ -60,7 +60,7 @@ export const BADGES = [
     id: 'gain_5pct',
     name: 'Up 5%',
     desc: 'Grow your total portfolio value by 5%.',
-    icon: '📊',
+    icon: '+5%',
     xp: 100,
     check: (s, prices) => {
       const total = s.user.balance + portfolioValue(s.holdings)
@@ -71,7 +71,7 @@ export const BADGES = [
     id: 'gain_10pct',
     name: 'Up 10%',
     desc: 'Grow your total portfolio value by 10%.',
-    icon: '💎',
+    icon: '+10%',
     xp: 200,
     check: (s, prices) => {
       const total = s.user.balance + portfolioValue(s.holdings)
@@ -82,7 +82,7 @@ export const BADGES = [
     id: 'gain_25pct',
     name: 'Up 25%',
     desc: 'Grow your total portfolio value by 25%.',
-    icon: '🏆',
+    icon: '+25%',
     xp: 500,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
@@ -93,7 +93,7 @@ export const BADGES = [
     id: 'gain_50pct',
     name: 'Up 50%',
     desc: 'Double half your starting balance.',
-    icon: '🌟',
+    icon: '+50%',
     xp: 1000,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
@@ -104,7 +104,7 @@ export const BADGES = [
     id: 'gain_100pct',
     name: 'Doubled Up',
     desc: 'Double your entire starting balance.',
-    icon: '🔥',
+    icon: '2X',
     xp: 2500,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
@@ -115,7 +115,7 @@ export const BADGES = [
     id: 'limit_order',
     name: 'Limit Setter',
     desc: 'Place a limit order.',
-    icon: '🎯',
+    icon: 'LIM',
     xp: 75,
     check: (s) => s.transactions.some(t => t.orderType === 'limit'),
   },
@@ -123,7 +123,7 @@ export const BADGES = [
     id: 'stop_loss',
     name: 'Risk Manager',
     desc: 'Place a stop-loss order.',
-    icon: '🛡️',
+    icon: 'STP',
     xp: 75,
     check: (s) => s.transactions.some(t => t.orderType === 'stop-loss'),
   },
@@ -131,7 +131,7 @@ export const BADGES = [
     id: 'trades_10',
     name: '10 Trades',
     desc: 'Complete 10 total trades.',
-    icon: '⚡',
+    icon: '10T',
     xp: 150,
     check: (s) => s.transactions.length >= 10,
   },
@@ -139,7 +139,7 @@ export const BADGES = [
     id: 'trades_50',
     name: '50 Trades',
     desc: 'Complete 50 total trades.',
-    icon: '💫',
+    icon: '50T',
     xp: 500,
     check: (s) => s.transactions.length >= 50,
   },
@@ -147,7 +147,7 @@ export const BADGES = [
     id: 'tech_investor',
     name: 'Tech Investor',
     desc: 'Own 3 or more Technology sector stocks simultaneously.',
-    icon: '💻',
+    icon: 'TEC',
     xp: 100,
     check: (s) => {
       const { STOCKS } = window.__STOCKS__ ?? { STOCKS: [] }
@@ -159,7 +159,7 @@ export const BADGES = [
     id: 'all_sectors',
     name: 'Sector Scout',
     desc: 'Hold at least one stock in every sector.',
-    icon: '🗺️',
+    icon: 'SCT',
     xp: 300,
     check: (s) => {
       const { STOCKS } = window.__STOCKS__ ?? { STOCKS: [] }
@@ -174,7 +174,7 @@ export const BADGES = [
     id: 'tutorial_done',
     name: 'Ready for Takeoff',
     desc: 'Complete the tutorial.',
-    icon: '✈️',
+    icon: 'GO',
     xp: 100,
     check: (s) => s.settings.tutorialDone,
   },
@@ -182,7 +182,7 @@ export const BADGES = [
     id: 'level_10',
     name: 'Level 10',
     desc: 'Reach investor level 10.',
-    icon: '🎖️',
+    icon: 'L10',
     xp: 0,
     check: (s) => s.user.level >= 10,
   },
@@ -190,7 +190,7 @@ export const BADGES = [
     id: 'level_25',
     name: 'Grandmaster',
     desc: 'Reach the maximum investor level 25.',
-    icon: '👑',
+    icon: 'L25',
     xp: 0,
     check: (s) => s.user.level >= 25,
   },
@@ -199,7 +199,7 @@ export const BADGES = [
     id: 'night_owl',
     name: 'Night Owl',
     desc: 'Make a trade after 11 PM local time.',
-    icon: '🦉',
+    icon: 'OWL',
     xp: 50,
     secret: true,
     check: (s) => s.transactions.some(t => new Date(t.ts).getHours() >= 23),
@@ -208,7 +208,7 @@ export const BADGES = [
     id: 'paper_hands',
     name: 'Paper Hands',
     desc: 'Sell a stock within 60 seconds of buying it.',
-    icon: '📄',
+    icon: 'PPR',
     xp: 25,
     secret: true,
     check: (s) => {
@@ -223,7 +223,7 @@ export const BADGES = [
     id: 'diamond_hands',
     name: 'Diamond Hands',
     desc: 'Hold a stock through a 10%+ unrealized loss without selling.',
-    icon: '💎',
+    icon: 'DIA',
     xp: 200,
     secret: true,
     check: (s, prices) => {
@@ -237,7 +237,7 @@ export const BADGES = [
     id: 'all_in',
     name: 'All In',
     desc: 'Spend 95% or more of your balance in a single trade.',
-    icon: '🎲',
+    icon: 'ALL',
     xp: 100,
     secret: true,
     check: (s) => s.transactions.some(t => t.type === 'buy' && t.total >= (s.user.balance + t.total) * 0.95),
@@ -246,7 +246,7 @@ export const BADGES = [
     id: 'big_spender',
     name: 'Big Spender',
     desc: 'Make a single trade worth over PC$5,000.',
-    icon: '💸',
+    icon: 'BIG',
     xp: 150,
     secret: true,
     check: (s) => s.transactions.some(t => t.total >= 5000),
@@ -255,7 +255,7 @@ export const BADGES = [
     id: 'perfect_timing',
     name: 'Perfect Timing',
     desc: 'Sell a stock at a gain of 20%+ from your average cost.',
-    icon: '⏱️',
+    icon: 'ACE',
     xp: 250,
     secret: true,
     check: (s) => s.transactions.some(t => {
@@ -279,7 +279,7 @@ export function checkAchievements() {
         const granted = unlockBadge(badge.id)
         if (granted) {
           if (badge.xp > 0) awardXP(badge.xp)
-          toast(`🏅 Badge unlocked: ${badge.name}`, 'success', 4000)
+          toast(`Badge unlocked: ${badge.name}`, 'success', 4000)
         }
       }
     } catch { /* ignore check errors */ }

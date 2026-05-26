@@ -4,10 +4,43 @@
 
 @layer base {
   * { box-sizing: border-box; }
+
+  /* Dark theme (default) */
+  :root {
+    --c-bg:               10 14 26;
+    --c-surface:          17 24 39;
+    --c-surface-elevated: 31 41 55;
+    --c-border:           55 65 81;
+    --c-accent-primary:   0 212 170;
+    --c-accent-secondary: 99 102 241;
+    --c-gain:             16 185 129;
+    --c-loss:             239 68 68;
+    --c-warning:          245 158 11;
+    --c-text-primary:     249 250 251;
+    --c-text-secondary:   156 163 175;
+    --c-text-muted:       107 114 128;
+  }
+
+  /* Light theme */
+  .light {
+    --c-bg:               248 250 252;
+    --c-surface:          255 255 255;
+    --c-surface-elevated: 241 245 249;
+    --c-border:           226 232 240;
+    --c-accent-primary:   0 168 132;
+    --c-accent-secondary: 79 70 229;
+    --c-gain:             5 150 105;
+    --c-loss:             220 38 38;
+    --c-warning:          217 119 6;
+    --c-text-primary:     15 23 42;
+    --c-text-secondary:   71 85 105;
+    --c-text-muted:       100 116 139;
+  }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #111827; }
-  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+  ::-webkit-scrollbar-track { background: rgb(var(--c-surface)); }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--c-border)); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-surface-elevated)); }
 }
 
 @layer utilities {

@@ -99,7 +99,10 @@ function badgeCard(badge, isUnlocked, secret = false) {
   return `
     <div class="bg-surface border ${isUnlocked ? 'border-accent-secondary/50' : 'border-border'} rounded-xl p-4 flex flex-col items-center text-center transition-colors
       ${isUnlocked ? 'shadow-[0_0_12px_rgba(99,102,241,0.15)]' : 'opacity-60'}">
-      <div class="text-3xl mb-2 ${isUnlocked ? '' : 'grayscale'}">${showSecret ? '❓' : badge.icon}</div>
+      <div class="w-12 h-12 rounded-xl mb-2 flex items-center justify-center text-[10px] font-bold tracking-wide
+        ${isUnlocked ? 'bg-accent-secondary/20 border border-accent-secondary/50 text-accent-secondary' : 'bg-surface-elevated border border-border text-text-muted'}">
+        ${showSecret ? '???' : badge.icon}
+      </div>
       <div class="text-xs font-semibold text-text-primary mb-1">${showSecret ? '???' : badge.name}</div>
       <div class="text-[10px] text-text-muted leading-tight">${showSecret ? 'Keep trading to discover this secret badge.' : badge.desc}</div>
       ${isUnlocked

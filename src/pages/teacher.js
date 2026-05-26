@@ -115,32 +115,48 @@ function renderLoading() {
 
 function renderNoSupabase() {
   if (!container) return
-  container.innerHTML = message('🔌', 'Supabase Not Configured', 'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local to enable the teacher panel.')
+  container.innerHTML = message('Supabase Not Configured', 'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local to enable the teacher panel.')
 }
 
 function renderNotLoggedIn() {
   if (!container) return
-  container.innerHTML = message('🔐', 'Not Logged In', 'Please log in first.', '#dashboard', 'Go to Dashboard')
+  container.innerHTML = message('Not Logged In', 'Please log in first.', '#dashboard', 'Go to Dashboard')
 }
 
 function renderNotTeacher() {
   if (!container) return
-  container.innerHTML = message('🚫', 'Access Denied',
+  container.innerHTML = message('Access Denied',
     `Your account (${profile?.display_name}) doesn't have teacher permissions. Ask an admin to update your role in Supabase.`,
     '#dashboard', 'Go to Dashboard')
 }
 
-function message(icon, title, body, href, linkText) {
+function message(title, body, href, linkText) {
   return `
     <div class="max-w-4xl mx-auto px-4 py-6">
       <div class="bg-surface border border-border rounded-2xl p-12 text-center">
-        <div class="text-5xl mb-4">${icon}</div>
         <div class="text-lg font-semibold text-text-primary mb-2">${title}</div>
         <div class="text-sm text-text-muted max-w-sm mx-auto">${body}</div>
         ${href ? `<a href="${href}" class="inline-block mt-6 px-5 py-2.5 rounded-xl bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">${linkText}</a>` : ''}
       </div>
     </div>
   `
+}
+
+function downloadCSV(sess) {
+  const rows = [['Rank', 'Name', 'Total Value (PC$)', 'P&L (PC$)', 'P&L %', 'XP']]
+  participants.forEach(p => {
+    const pl = p.total_value - sess.starting_balance
+    const plPct = (pl / sess.starting_balance) * 100
+    rows.push([p.rank, p.display_name, p.total_value.toFixed(2), pl.toFixed(2), plPct.toFixed(2) + '%', p.xp ?? 0])
+  })
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `${sess.name.replace(/\s+/g, '_')}_results.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
@@ -217,7 +233,7 @@ function sessionCard(s) {
   return `
     <div class="bg-surface border border-border rounded-2xl p-5 flex items-center justify-between gap-4 hover:border-accent-primary/50 transition-colors cursor-pointer session-card" data-id="${s.id}">
       <div class="flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/30 flex items-center justify-center text-lg">🎓</div>
+        <div class="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/30 flex items-center justify-center text-xs font-bold text-accent-primary">S</div>
         <div>
           <div class="font-semibold text-text-primary">${s.name}</div>
           <div class="flex items-center gap-2 mt-0.5">
@@ -290,6 +306,10 @@ async function renderDetail() {
         <div class="bg-surface border border-border rounded-2xl overflow-hidden">
           <div class="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 class="font-semibold text-text-primary">Participants <span class="text-text-muted text-sm font-normal">(${participants.length})</span></h2>
+            ${participants.length > 0 ? `
+              <button id="export-csv-btn" class="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-colors">
+                Export CSV
+              </button>` : ''}
           </div>
           <div id="participant-table" class="divide-y divide-border max-h-72 overflow-y-auto">
             ${participantRows(startingBal)}
@@ -319,7 +339,7 @@ async function renderDetail() {
               ? `<div class="px-5 py-4 text-sm text-text-muted">No announcements yet.</div>`
               : announcements.map(a => `
                   <div class="px-5 py-3 ${a.pinned ? 'bg-accent-primary/5' : ''}">
-                    ${a.pinned ? `<span class="text-[10px] text-accent-primary font-semibold uppercase tracking-wide">📌 Pinned · </span>` : ''}
+                    ${a.pinned ? `<span class="text-[10px] text-accent-primary font-semibold uppercase tracking-wide">Pinned · </span>` : ''}
                     <span class="text-sm text-text-primary">${a.message}</span>
                     <div class="text-[10px] text-text-muted mt-0.5">${new Date(a.created_at).toLocaleString()}</div>
                   </div>
@@ -366,7 +386,7 @@ async function renderDetail() {
           </div>
           <button id="evt-submit"
             class="px-5 py-2.5 rounded-xl bg-warning text-bg text-sm font-semibold hover:bg-warning/90 transition-colors">
-            🚨 Fire Event
+            Fire Event
           </button>
           <div id="evt-error" class="hidden text-xs text-loss"></div>
         </div>
@@ -378,7 +398,7 @@ async function renderDetail() {
             : events.map(e => `
                 <div class="px-5 py-3">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold text-warning">🚨 ${e.title}</span>
+                    <span class="text-sm font-semibold text-warning">${e.title}</span>
                     <span class="text-[10px] text-text-muted">${new Date(e.created_at).toLocaleString()}</span>
                   </div>
                   <div class="text-xs text-text-muted mt-0.5">${e.body}</div>
@@ -401,10 +421,9 @@ function participantRows(startingBal) {
   return participants.map(p => {
     const pl = p.total_value - startingBal
     const plPct = (pl / startingBal) * 100
-    const rankEmoji = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `#${p.rank}`
     return `
       <div class="flex items-center gap-3 px-5 py-3">
-        <span class="w-8 text-center text-sm">${rankEmoji}</span>
+        <span class="w-8 text-center text-xs font-bold text-text-muted">#${p.rank}</span>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-text-primary truncate">${p.display_name}</div>
           <div class="text-[10px] text-text-muted">${(p.xp ?? 0).toLocaleString()} XP</div>
@@ -475,6 +494,8 @@ function bindListEvents() {
 }
 
 function bindDetailEvents(sess) {
+  container.querySelector('#export-csv-btn')?.addEventListener('click', () => downloadCSV(sess))
+
   container.querySelector('#back-btn')?.addEventListener('click', () => {
     if (annChannel) { supabase.removeChannel(annChannel); annChannel = null }
     view = 'sessions'
@@ -565,7 +586,7 @@ function bindDetailEvents(sess) {
       affects,
     })
 
-    btn.disabled = false; btn.textContent = '🚨 Fire Event'
+    btn.disabled = false; btn.textContent = 'Fire Event'
 
     if (error) {
       errEl.textContent = error.message

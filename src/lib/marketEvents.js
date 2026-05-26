@@ -58,7 +58,7 @@ function handleEvent(event) {
   // 1. Notification bell entry
   addNotification({
     type:    'market-event',
-    message: `🚨 ${event.title}: ${event.body}`,
+    message: `Market Event: ${event.title}: ${event.body}`,
   })
 
   // 2. Dramatic banner toast
@@ -109,7 +109,6 @@ function showEventBanner(event) {
       <div class="flex items-start justify-between gap-3">
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-lg">🚨</span>
             <span class="text-xs font-bold uppercase tracking-widest text-warning">Market Event</span>
           </div>
           <div class="font-display font-bold text-text-primary text-base">${event.title}</div>
