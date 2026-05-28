@@ -5,6 +5,7 @@ import { STOCKS } from '../data/stocks.js'
 import { pc } from '../utils/format.js'
 import { toast } from '../components/toast.js'
 import { startTutorial } from '../components/tutorial.js'
+import { supabase } from '../lib/supabase.js'
 
 let container = null
 let unsub = null
@@ -42,6 +43,20 @@ function render() {
             <button id="save-name-btn" class="px-4 py-2 rounded-lg bg-accent-primary text-bg text-sm font-semibold hover:bg-accent-primary/90 transition-colors">Save</button>
           </div>
         </div>
+        ${supabase ? `
+        <div class="border-t border-border pt-4">
+          <label class="text-xs text-text-muted uppercase tracking-wide mb-1.5 block">Change Password</label>
+          <div class="space-y-2">
+            <input id="new-password-input" type="password" placeholder="New password (min 6 chars)"
+              class="w-full bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
+            <input id="confirm-password-input" type="password" placeholder="Confirm new password"
+              class="w-full bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
+            <button id="change-password-btn" class="px-4 py-2 rounded-lg bg-surface-elevated border border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-colors">
+              Update Password
+            </button>
+            <div id="pw-error" class="hidden text-xs text-loss"></div>
+          </div>
+        </div>` : ''}
       </section>
 
       <!-- Appearance -->
@@ -194,6 +209,26 @@ function bindEvents() {
     if (!val) { toast('Name cannot be empty', 'error'); return }
     setDisplayName(val)
     toast('Display name updated!', 'success')
+  })
+
+  // Password change
+  container.querySelector('#change-password-btn')?.addEventListener('click', async () => {
+    const pw  = container.querySelector('#new-password-input')?.value
+    const pw2 = container.querySelector('#confirm-password-input')?.value
+    const err = container.querySelector('#pw-error')
+    err.classList.add('hidden')
+    if (!pw || pw.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.classList.remove('hidden'); return }
+    if (pw !== pw2) { err.textContent = 'Passwords do not match.'; err.classList.remove('hidden'); return }
+    const btn = container.querySelector('#change-password-btn')
+    btn.disabled = true; btn.textContent = 'Updating…'
+    const { error } = await supabase.auth.updateUser({ password: pw })
+    btn.disabled = false; btn.textContent = 'Update Password'
+    if (error) { err.textContent = error.message; err.classList.remove('hidden') }
+    else {
+      container.querySelector('#new-password-input').value = ''
+      container.querySelector('#confirm-password-input').value = ''
+      toast('Password updated!', 'success')
+    }
   })
 
   // Audio

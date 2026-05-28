@@ -200,6 +200,11 @@ function renderSessionList() {
             <input id="sess-balance" type="number" value="10000" min="1000" step="1000"
               class="w-full bg-bg border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
           </div>
+          <div>
+            <label class="text-xs text-text-muted mb-1.5 block">End Date/Time (optional)</label>
+            <input id="sess-ends-at" type="datetime-local"
+              class="w-full bg-bg border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary transition-colors" />
+          </div>
         </div>
         <div class="flex gap-3">
           <button id="create-confirm-btn"
@@ -306,10 +311,19 @@ async function renderDetail() {
         <div class="bg-surface border border-border rounded-2xl overflow-hidden">
           <div class="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 class="font-semibold text-text-primary">Participants <span class="text-text-muted text-sm font-normal">(${participants.length})</span></h2>
-            ${participants.length > 0 ? `
-              <button id="export-csv-btn" class="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-colors">
-                Export CSV
-              </button>` : ''}
+            <div class="flex items-center gap-2">
+              <button id="leaderboard-toggle-btn"
+                class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
+                ${sess.leaderboard_hidden
+                  ? 'bg-warning/10 border-warning/40 text-warning hover:bg-warning/20'
+                  : 'bg-surface-elevated border-border text-text-secondary hover:text-text-primary hover:border-accent-primary/50'}">
+                ${sess.leaderboard_hidden ? 'Show Leaderboard' : 'Hide Leaderboard'}
+              </button>
+              ${participants.length > 0 ? `
+                <button id="export-csv-btn" class="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-accent-primary/50 transition-colors">
+                  Export CSV
+                </button>` : ''}
+            </div>
           </div>
           <div id="participant-table" class="divide-y divide-border max-h-72 overflow-y-auto">
             ${participantRows(startingBal)}
@@ -428,10 +442,14 @@ function participantRows(startingBal) {
           <div class="text-sm font-medium text-text-primary truncate">${p.display_name}</div>
           <div class="text-[10px] text-text-muted">${(p.xp ?? 0).toLocaleString()} XP</div>
         </div>
-        <div class="text-right">
+        <div class="text-right mr-2">
           <div class="text-sm font-mono font-bold text-text-primary">${pc(p.total_value)}</div>
           <div class="text-[10px] ${pl >= 0 ? 'text-gain' : 'text-loss'}">${pl >= 0 ? '+' : ''}${plPct.toFixed(2)}%</div>
         </div>
+        <button data-reset-student="${p.user_id}" data-student-name="${p.display_name}"
+          class="reset-student-btn shrink-0 px-2 py-1 rounded-lg border border-loss/30 text-[10px] text-loss hover:bg-loss/10 transition-colors">
+          Reset
+        </button>
       </div>
     `
   }).join('')
@@ -465,11 +483,13 @@ function bindListEvents() {
     btn.disabled = true; btn.textContent = 'Creating…'
     errEl.classList.add('hidden')
 
+    const endsAtVal = container.querySelector('#sess-ends-at')?.value
     const { data, error } = await supabase.from('sessions').insert({
       teacher_id:       profile.id,
       name,
       join_code:        'XXXXXX',   // trigger will overwrite this
       starting_balance: balance,
+      ...(endsAtVal ? { ends_at: new Date(endsAtVal).toISOString() } : {}),
     }).select().single()
 
     if (error) {
@@ -495,6 +515,35 @@ function bindListEvents() {
 
 function bindDetailEvents(sess) {
   container.querySelector('#export-csv-btn')?.addEventListener('click', () => downloadCSV(sess))
+
+  container.querySelector('#leaderboard-toggle-btn')?.addEventListener('click', async () => {
+    const newVal = !sess.leaderboard_hidden
+    const { error } = await supabase.from('sessions').update({ leaderboard_hidden: newVal }).eq('id', sess.id)
+    if (!error) {
+      sess.leaderboard_hidden = newVal
+      const btn = container.querySelector('#leaderboard-toggle-btn')
+      if (btn) {
+        btn.textContent = newVal ? 'Show Leaderboard' : 'Hide Leaderboard'
+        btn.className = `px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${newVal ? 'bg-warning/10 border-warning/40 text-warning hover:bg-warning/20' : 'bg-surface-elevated border-border text-text-secondary hover:text-text-primary hover:border-accent-primary/50'}`
+      }
+    }
+  })
+
+  container.querySelectorAll('.reset-student-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = btn.dataset.resetStudent
+      const name   = btn.dataset.studentName
+      if (!confirm(`Reset ${name}'s portfolio to PC$${sess.starting_balance.toLocaleString()}? This cannot be undone.`)) return
+      btn.disabled = true; btn.textContent = '…'
+      const { error } = await supabase.rpc('reset_student_portfolio', {
+        p_session_id: sess.id,
+        p_user_id:    userId,
+      })
+      btn.disabled = false; btn.textContent = 'Reset'
+      if (error) alert('Reset failed: ' + error.message)
+      else await renderDetail()
+    })
+  })
 
   container.querySelector('#back-btn')?.addEventListener('click', () => {
     if (annChannel) { supabase.removeChannel(annChannel); annChannel = null }

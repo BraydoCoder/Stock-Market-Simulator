@@ -6,13 +6,17 @@ import { pc, pct, gainClass } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { FINNHUB_API_KEY } from '../config.js'
 
+const PAGE_SIZE = 20
+
 let filterSector = 'All'
 let searchQuery = ''
 let sortKey = 'symbol'
 let sortDir = 1
 let viewMode = 'table'   // 'table' | 'card'
+let page = 0
 let priceListener = null
 let container = null
+let searchDebounce = null
 
 export function mountStockBrowser(el) {
   container = el
@@ -55,6 +59,10 @@ function render() {
   const stocks = filteredStocks()
   const holdings = getState().holdings
   const marketOpen = isMarketOpen()
+  const totalPages = Math.max(1, Math.ceil(stocks.length / PAGE_SIZE))
+  if (page >= totalPages) page = totalPages - 1
+  const start = page * PAGE_SIZE
+  const pagedStocks = stocks.slice(start, start + PAGE_SIZE)
 
   container.innerHTML = `
     <div class="max-w-7xl mx-auto px-4 py-6 space-y-5">
@@ -107,9 +115,25 @@ function render() {
       </div>
 
       <!-- Stock list -->
-      ${viewMode === 'table' ? tableView(stocks, holdings) : cardView(stocks, holdings)}
+      ${viewMode === 'table' ? tableView(pagedStocks, holdings) : cardView(pagedStocks, holdings)}
 
-      <div class="text-xs text-text-muted">${stocks.length} of ${STOCKS.length} stocks shown</div>
+      <!-- Pagination -->
+      <div class="flex items-center justify-between">
+        <div class="text-xs text-text-muted">${start + 1}–${Math.min(start + PAGE_SIZE, stocks.length)} of ${stocks.length} stocks</div>
+        <div class="flex gap-1">
+          <button id="page-prev" ${page === 0 ? 'disabled' : ''}
+            class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
+            ${page === 0 ? 'border-border text-text-muted opacity-40 cursor-default' : 'bg-surface-elevated border-border text-text-muted hover:text-text-primary'}">
+            Prev
+          </button>
+          <span class="px-3 py-1.5 text-xs text-text-muted">Page ${page + 1} / ${totalPages}</span>
+          <button id="page-next" ${page >= totalPages - 1 ? 'disabled' : ''}
+            class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
+            ${page >= totalPages - 1 ? 'border-border text-text-muted opacity-40 cursor-default' : 'bg-surface-elevated border-border text-text-muted hover:text-text-primary'}">
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   `
 
@@ -156,9 +180,12 @@ function cardView(stocks, holdings) {
           <div class="bg-surface border border-border rounded-xl p-4 hover:border-accent-primary transition-colors cursor-pointer group"
             data-symbol="${s.symbol}">
             <div class="flex items-start justify-between mb-2">
-              <div>
-                <div class="font-mono font-bold text-sm text-text-primary group-hover:text-accent-primary">${s.symbol}</div>
-                <div class="text-[10px] text-text-muted mt-0.5">${s.sector}</div>
+              <div class="flex items-center gap-2">
+                ${logoImg(s, 'w-7 h-7')}
+                <div>
+                  <div class="font-mono font-bold text-sm text-text-primary group-hover:text-accent-primary">${s.symbol}</div>
+                  <div class="text-[10px] text-text-muted">${s.sector}</div>
+                </div>
               </div>
               ${owned ? `<div class="text-[9px] text-accent-secondary font-semibold">Owned</div>` : ''}
             </div>
@@ -191,14 +218,26 @@ function th(key, label, cls) {
   return `<th class="${cls} cursor-pointer hover:text-text-primary select-none" data-sort="${key}">${label}${arrow}</th>`
 }
 
+function logoImg(s, size = 'w-6 h-6') {
+  if (!s.domain) return `<div class="${size} rounded bg-surface-elevated flex items-center justify-center text-[8px] font-bold text-text-muted">${s.symbol[0]}</div>`
+  return `<img src="https://logo.clearbit.com/${s.domain}" alt=""
+    class="${size} rounded object-contain bg-surface-elevated"
+    onerror="this.outerHTML='<div class=\\'${size} rounded bg-surface-elevated flex items-center justify-center text-[8px] font-bold text-text-muted\\'>${s.symbol[0]}</div>'" />`
+}
+
 function stockRow(s, holdings) {
   const p = getPrice(s.symbol)
   const owned = holdings[s.symbol]
   return `
     <tr class="hover:bg-surface-elevated/50 transition-colors" data-symbol="${s.symbol}">
       <td class="px-5 py-3.5">
-        <div class="font-mono font-bold text-text-primary">${s.symbol}</div>
-        ${owned ? `<div class="text-[10px] text-accent-secondary mt-0.5">Owned: ${owned.shares % 1 === 0 ? owned.shares : owned.shares.toFixed(4)}</div>` : ''}
+        <div class="flex items-center gap-2">
+          ${logoImg(s, 'w-6 h-6')}
+          <div>
+            <div class="font-mono font-bold text-text-primary">${s.symbol}</div>
+            ${owned ? `<div class="text-[10px] text-accent-secondary">Owned: ${owned.shares % 1 === 0 ? owned.shares : owned.shares.toFixed(4)}</div>` : ''}
+          </div>
+        </div>
       </td>
       <td class="px-3 py-3.5 text-text-secondary hidden sm:table-cell">${s.name}</td>
       <td class="px-3 py-3.5 hidden md:table-cell">
@@ -250,10 +289,13 @@ function updatePriceRows() {
 
 function bindEvents() {
   const search = container.querySelector('#stock-search')
-  search?.addEventListener('input', () => { searchQuery = search.value; render() })
+  search?.addEventListener('input', () => {
+    clearTimeout(searchDebounce)
+    searchDebounce = setTimeout(() => { searchQuery = search.value; page = 0; render() }, 300)
+  })
 
   container.querySelectorAll('.sector-btn').forEach(btn => {
-    btn.addEventListener('click', () => { filterSector = btn.dataset.sector; render() })
+    btn.addEventListener('click', () => { filterSector = btn.dataset.sector; page = 0; render() })
   })
 
   container.querySelectorAll('.view-btn').forEach(btn => {
@@ -265,9 +307,13 @@ function bindEvents() {
       const key = th.dataset.sort
       if (sortKey === key) sortDir *= -1
       else { sortKey = key; sortDir = 1 }
+      page = 0
       render()
     })
   })
+
+  container.querySelector('#page-prev')?.addEventListener('click', () => { if (page > 0) { page--; render() } })
+  container.querySelector('#page-next')?.addEventListener('click', () => { page++; render() })
 
   container.querySelectorAll('.trade-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {

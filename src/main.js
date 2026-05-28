@@ -22,6 +22,8 @@ import { mountAuth,         unmountAuth         } from './pages/auth.js'
 import { mountLeaderboard,  unmountLeaderboard  } from './pages/leaderboard.js'
 import { mountTeacher,     unmountTeacher      } from './pages/teacher.js'
 import { mountResults,     unmountResults      } from './pages/results.js'
+import { mountHistory,     unmountHistory      } from './pages/history.js'
+import { mountHelp,        unmountHelp         } from './pages/help.js'
 import { startTutorial } from './components/tutorial.js'
 import { checkAchievements } from './utils/achievements.js'
 import { supabase } from './lib/supabase.js'
@@ -46,6 +48,8 @@ function getRoute() {
   if (hash.startsWith('#results'))       return { name: 'results' }
   if (hash.startsWith('#settings'))      return { name: 'settings' }
   if (hash.startsWith('#profile'))       return { name: 'profile' }
+  if (hash.startsWith('#history'))       return { name: 'history' }
+  if (hash.startsWith('#help'))          return { name: 'help' }
   return { name: 'dashboard' }
 }
 
@@ -63,6 +67,8 @@ function unmountCurrent() {
     case 'leaderboard-project':  unmountLeaderboard();  break
     case 'teacher':      unmountTeacher();      break
     case 'results':      unmountResults();      break
+    case 'history':      unmountHistory();      break
+    case 'help':         unmountHelp();         break
     case 'auth':         unmountAuth();         break
   }
 }
@@ -86,6 +92,8 @@ function mount(route) {
     case 'leaderboard-project':  mountLeaderboard(main, true);  break
     case 'teacher':      mountTeacher(main);                           break
     case 'results':      mountResults(main);                           break
+    case 'history':      mountHistory(main);                           break
+    case 'help':         mountHelp(main);                              break
   }
 }
 

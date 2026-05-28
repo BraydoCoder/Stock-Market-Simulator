@@ -45,6 +45,7 @@ function renderNavbar() {
           ${link('#dashboard',    'Dashboard')}
           ${link('#stocks',       'Stocks')}
           ${link('#portfolio',    'Portfolio')}
+          ${link('#history',      'History')}
           ${link('#achievements', 'Achievements')}
           ${link('#leaderboard',  'Leaderboard')}
         </div>
@@ -107,8 +108,11 @@ function renderNavbar() {
               <a href="#teacher" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
                 Teacher Panel
               </a>
+              <a href="#help" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
+                Help / FAQ
+              </a>
               <button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
-                ↩ Sign Out
+                Sign Out
               </button>
             </div>
           </div>

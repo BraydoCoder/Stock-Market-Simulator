@@ -6,23 +6,44 @@ import { getActiveSessionId } from '../lib/session.js'
 import { getUser } from '../utils/auth.js'
 import { pc, gainClass } from '../utils/format.js'
 
-let container   = null
-let channel     = null
+let container    = null
+let channel      = null
 let reactChannel = null
-let rows        = []
-let reactions   = {}   // { to_user_id: { emoji: count } }
-let myReactions = {}   // { to_user_id: emoji }
-let sessionId   = null
-let currentUid  = null
-let session     = null
-let projectable = false
+let rows         = []
+let prevRanks    = {}  // { user_id: rank } from last fetch, for rank-change arrows
+let reactions    = {}  // { to_user_id: { emoji: count } }
+let myReactions  = {}  // { to_user_id: emoji }
+let sessionId    = null
+let currentUid   = null
+let session      = null
+let projectable  = false
 
 const REACTION_EMOJIS = ['👍', '🚀', '😮', '😬', '🔥']
 
+const LEVEL_TITLES = [
+  '', 'Rookie Pilot', 'Market Watcher', 'Trade Starter', 'Chart Reader',
+  'Bull Believer', 'Risk Taker', 'Portfolio Builder', 'Swing Trader',
+  'Value Hunter', 'Market Analyst', 'Sector Scout', 'Index Beater',
+  'Alpha Seeker', 'Momentum Trader', 'Portfolio Pro', 'Smart Money',
+  'Deep Value', 'Market Timer', 'Quant Trader', 'Hedge Fund Boss',
+  'Market Maker', 'Wolf of StockPilot', 'Trading Legend', 'Warren Buffett Jr.',
+  'Pilot Grandmaster',
+]
+
+function levelFromXP(xp) {
+  let level = 1, total = 0
+  while (level < 25) {
+    total += Math.floor(100 * Math.pow(1.5, level - 1))
+    if (total > xp) break
+    level++
+  }
+  return Math.min(level, 25)
+}
+
 export async function mountLeaderboard(el, isProjectable = false) {
-  container  = el
+  container   = el
   projectable = isProjectable
-  sessionId  = getActiveSessionId()
+  sessionId   = getActiveSessionId()
 
   renderSkeleton()
 
@@ -32,7 +53,7 @@ export async function mountLeaderboard(el, isProjectable = false) {
   currentUid = (await getUser())?.id ?? null
 
   const [{ data: sess }, { data: rxns }] = await Promise.all([
-    supabase.from('sessions').select('name, status, starting_balance, join_code').eq('id', sessionId).single(),
+    supabase.from('sessions').select('name, status, starting_balance, join_code, leaderboard_hidden').eq('id', sessionId).single(),
     supabase.from('leaderboard_reactions').select('from_user_id, to_user_id, emoji').eq('session_id', sessionId),
   ])
 
@@ -46,25 +67,41 @@ export async function mountLeaderboard(el, isProjectable = false) {
 export function unmountLeaderboard() {
   if (channel)      { supabase?.removeChannel(channel);      channel = null }
   if (reactChannel) { supabase?.removeChannel(reactChannel); reactChannel = null }
-  container  = null
-  rows       = []
-  reactions  = {}
+  container   = null
+  rows        = []
+  prevRanks   = {}
+  reactions   = {}
   myReactions = {}
-  session    = null
-  sessionId  = null
-  currentUid = null
+  session     = null
+  sessionId   = null
+  currentUid  = null
 }
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 async function fetchAndRender() {
   if (!supabase || !sessionId) return
+
+  // Re-fetch session to get latest leaderboard_hidden status
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('name, status, starting_balance, join_code, leaderboard_hidden')
+    .eq('id', sessionId)
+    .single()
+  if (sess) session = sess
+
   const { data, error } = await supabase
     .from('leaderboard')
     .select('user_id, display_name, avatar_seed, balance, total_value, xp, rank')
     .eq('session_id', sessionId)
     .order('rank', { ascending: true })
   if (error) { renderError(error.message); return }
+
+  // Save previous ranks before overwriting
+  const newPrevRanks = {}
+  rows.forEach(r => { newPrevRanks[r.user_id] = r.rank })
+  prevRanks = newPrevRanks
+
   rows = data ?? []
   render()
 }
@@ -86,6 +123,8 @@ function subscribeRealtime() {
     .channel(`leaderboard:${sessionId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolios', filter: `session_id=eq.${sessionId}` },
       () => fetchAndRender())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
+      () => fetchAndRender())
     .subscribe()
 
   reactChannel = supabase
@@ -103,7 +142,6 @@ async function sendReaction(toUserId, emoji) {
   if (!supabase || !currentUid || currentUid === toUserId) return
   const existing = myReactions[toUserId]
   if (existing === emoji) {
-    // Toggle off
     await supabase.from('leaderboard_reactions')
       .delete()
       .eq('session_id', sessionId)
@@ -201,6 +239,25 @@ function render() {
     return
   }
 
+  // Hidden by teacher — show message to non-projectable viewers
+  if (session?.leaderboard_hidden) {
+    container.innerHTML = `
+      <div class="max-w-4xl mx-auto px-4 py-6">
+        <h1 class="text-2xl font-display font-bold text-text-primary mb-6">Leaderboard</h1>
+        <div class="bg-surface border border-border rounded-2xl p-12 text-center">
+          <div class="text-lg font-semibold text-text-primary mb-2">Leaderboard Hidden</div>
+          <div class="text-sm text-text-muted">Your teacher has temporarily hidden the leaderboard.</div>
+        </div>
+      </div>
+    `
+    return
+  }
+
+  // Identify whether my row is in the visible set (top portion)
+  const myRow = rows.find(r => r.user_id === currentUid)
+  const TOP_N = 20
+  const myIsInTop = !myRow || (myRow.rank <= TOP_N)
+
   container.innerHTML = `
     <div class="max-w-4xl mx-auto px-4 py-6 space-y-5">
 
@@ -242,6 +299,12 @@ function render() {
           <div class="divide-y divide-border" id="leaderboard-rows">
             ${rows.map(r => rowHTML(r, startingBalance)).join('')}
           </div>
+          ${!myIsInTop && myRow ? `
+            <div class="border-t-2 border-accent-primary/30 bg-accent-primary/5">
+              <div class="px-5 py-2 text-[10px] text-accent-primary font-semibold uppercase tracking-wide">Your Position</div>
+              ${rowHTML(myRow, startingBalance)}
+            </div>
+          ` : ''}
         </div>
       `}
 
@@ -338,16 +401,26 @@ function podiumHTML(top3, startingBalance) {
   `
 }
 
+function rankArrow(r) {
+  const prev = prevRanks[r.user_id]
+  if (prev == null || prev === r.rank) return '<span class="text-[10px] text-text-muted w-3 inline-block">—</span>'
+  if (r.rank < prev) return '<span class="text-[10px] text-gain w-3 inline-block">↑</span>'
+  return '<span class="text-[10px] text-loss w-3 inline-block">↓</span>'
+}
+
 function rowHTML(r, startingBalance) {
   const isMe  = r.user_id === currentUid
   const pl    = r.total_value - startingBalance
   const plPct = (pl / startingBalance) * 100
+  const barW  = Math.min(Math.abs(plPct) * 4, 100)
   const rankLabel = r.rank === 1 ? '1st' : r.rank === 2 ? '2nd' : r.rank === 3 ? '3rd' : `#${r.rank}`
+  const level = levelFromXP(r.xp ?? 0)
+  const title = LEVEL_TITLES[level] ?? 'Pilot'
   const rxnMap = reactions[r.user_id] ?? {}
   const myRxn  = myReactions[r.user_id] ?? null
   const canReact = currentUid && currentUid !== r.user_id
 
-  const reactionBar = !projectable ? `
+  const reactionBar = `
     <div class="flex items-center gap-1 mt-1 flex-wrap" data-reaction-row="${r.user_id}">
       ${REACTION_EMOJIS.map(e => {
         const count = rxnMap[e] ?? 0
@@ -360,23 +433,29 @@ function rowHTML(r, startingBalance) {
         </button>`
       }).join('')}
     </div>
-  ` : ''
+  `
 
   return `
     <div class="px-5 py-3.5 ${isMe ? 'bg-accent-primary/5 border-l-2 border-accent-primary' : 'hover:bg-surface-elevated/50'} transition-colors">
-      <div class="flex items-center gap-4">
-        <div class="w-10 text-center text-sm font-bold font-mono text-text-muted">${rankLabel}</div>
+      <div class="flex items-center gap-3">
+        <div class="w-4 flex-shrink-0">${rankArrow(r)}</div>
+        <div class="w-8 text-center text-sm font-bold font-mono text-text-muted shrink-0">${rankLabel}</div>
         ${avatar(r, isMe, 'w-9 h-9 text-sm')}
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-text-primary truncate">
-            ${r.display_name}${isMe ? ' <span class="text-[10px] text-accent-primary font-normal ml-1">you</span>' : ''}
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm font-semibold text-text-primary truncate">
+              ${r.display_name}${isMe ? ' <span class="text-[10px] text-accent-primary font-normal">you</span>' : ''}
+            </span>
           </div>
-          <div class="text-[10px] text-text-muted">${(r.xp ?? 0).toLocaleString()} XP</div>
+          <div class="text-[10px] text-text-muted">${title} · Lv.${level} · ${(r.xp ?? 0).toLocaleString()} XP</div>
           ${reactionBar}
         </div>
-        <div class="text-right shrink-0">
+        <div class="text-right shrink-0 space-y-1">
           <div class="text-sm font-mono font-bold text-text-primary tabular-nums">${pc(r.total_value)}</div>
           <div class="text-[10px] ${gainClass(plPct)} tabular-nums">${pl >= 0 ? '+' : ''}${pc(pl)} (${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%)</div>
+          <div class="w-24 h-1 bg-surface-elevated rounded-full overflow-hidden ml-auto">
+            <div class="h-full ${pl >= 0 ? 'bg-gain' : 'bg-loss'} rounded-full transition-all duration-500" style="width:${barW}%"></div>
+          </div>
         </div>
       </div>
     </div>
