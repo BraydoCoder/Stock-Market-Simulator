@@ -237,15 +237,20 @@ async function init() {
   dismissSplash()
   const main = document.getElementById('main-content')
 
-  // If Supabase is configured, gate the app behind auth.
-  if (supabase) {
-    const timeout = new Promise(res => setTimeout(() => res(null), 4000))
-    const session = await Promise.race([getSession(), timeout])
+  // Boot the app immediately so the UI is always visible.
+  bootApp()
+
+  // Then check auth state in the background.
+  if (!supabase) return
+
+  try {
+    const timeout  = new Promise(res => setTimeout(() => res(null), 5000))
+    const session  = await Promise.race([getSession(), timeout])
 
     if (!session) {
+      unmountCurrent()
       currentRoute = 'auth'
       mountAuth(main)
-
       window.addEventListener('auth-ready', () => {
         unmountAuth()
         currentRoute = null
@@ -254,7 +259,6 @@ async function init() {
       return
     }
 
-    // Already logged in — listen for future sign-outs to return to auth screen.
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         unmountCurrent()
@@ -267,9 +271,9 @@ async function init() {
         }, { once: true })
       }
     })
+  } catch (_) {
+    // Supabase unavailable — continue in offline mode
   }
-
-  bootApp()
 }
 
 init()
