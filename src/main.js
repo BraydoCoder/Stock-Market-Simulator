@@ -207,6 +207,14 @@ function bootApp() {
   window.addEventListener('hashchange', () => mount(getRoute()))
   mount(getRoute())
 
+  // Dismiss splash screen once the app has mounted
+  const splash = document.getElementById('splash')
+  if (splash) {
+    const bar = document.getElementById('splash-bar')
+    if (bar) bar.style.width = '100%'
+    setTimeout(() => { splash.style.opacity = '0'; splash.style.transition = 'opacity .3s'; setTimeout(() => splash.remove(), 300) }, 200)
+  }
+
 
   // Start listening for teacher market events if already in a session
   if (supabase && getActiveSessionId()) {
