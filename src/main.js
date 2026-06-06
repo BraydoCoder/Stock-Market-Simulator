@@ -6,8 +6,6 @@
 // and refreshed every 60 seconds. Otherwise the simulation tick runs.
 
 import './style.css'
-import { injectSpeedInsights } from '@vercel/speed-insights'
-import { inject as injectAnalytics } from '@vercel/analytics'
 import { initNavbar } from './components/navbar.js'
 import { initPrices, tick, startFinnhubPolling } from './api/prices.js'
 import { FINNHUB_API_KEY } from './config.js'
@@ -277,7 +275,5 @@ async function init() {
   bootApp()
 }
 
-injectSpeedInsights()
-injectAnalytics()
 initNarrowBanner()
 init()
