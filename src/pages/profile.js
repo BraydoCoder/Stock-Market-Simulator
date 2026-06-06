@@ -83,7 +83,7 @@ function render() {
             ? `<div class="grid grid-cols-2 gap-3">
                 ${recentBadges.map(b => `
                   <div class="flex items-center gap-2 bg-surface-elevated rounded-xl p-3">
-                    <span class="text-2xl">${b.icon}</span>
+                    <div class="w-8 h-8 rounded-lg bg-accent-secondary/20 border border-accent-secondary/50 flex items-center justify-center text-[10px] font-bold text-accent-secondary shrink-0">${b.icon}</div>
                     <div>
                       <div class="text-xs font-semibold text-text-primary">${b.name}</div>
                       <div class="text-[10px] text-text-muted">${b.desc.substring(0, 30)}…</div>
@@ -98,7 +98,7 @@ function render() {
         <div class="bg-surface border border-border rounded-2xl overflow-hidden">
           <div class="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 class="font-semibold text-text-primary">Recent Trades</h2>
-            <a href="#portfolio" class="text-xs text-accent-primary hover:underline">Full history →</a>
+            <a href="#history" class="text-xs text-accent-primary hover:underline">Full history →</a>
           </div>
           ${recentTxs.length
             ? `<div class="divide-y divide-border">

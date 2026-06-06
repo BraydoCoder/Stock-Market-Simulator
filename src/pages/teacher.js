@@ -8,13 +8,29 @@ import { getUser } from '../utils/auth.js'
 import { pc } from '../utils/format.js'
 import { STOCKS } from '../data/stocks.js'
 
-let container   = null
-let profile     = null   // current user's profile row
-let sessions    = []     // sessions owned by this teacher
-let activeId    = null   // currently selected session id
-let participants = []    // portfolios for the active session
-let annChannel  = null   // realtime channel for participants
-let view        = 'sessions'  // 'sessions' | 'session-detail'
+let container        = null
+let profile          = null   // current user's profile row
+let sessions         = []     // sessions owned by this teacher
+let activeId         = null   // currently selected session id
+let participants     = []     // portfolios for the active session
+let annChannel       = null   // realtime channel for participants
+let view             = 'sessions'  // 'sessions' | 'session-detail'
+let autoEventTimer   = null   // setInterval handle for auto events
+
+const PRESET_EVENTS = [
+  { title: 'Fed Rate Hike', body: 'Federal Reserve raises rates 0.75%. Bond yields surge; tech stocks under pressure.' },
+  { title: 'Bull Run', body: 'Strong jobs report sends markets soaring. Broad rally across all sectors.' },
+  { title: 'Tech Selloff', body: 'NASDAQ drops 3% amid valuation concerns. Growth stocks take the hardest hit.' },
+  { title: 'Oil Spike', body: 'OPEC cuts production by 2 million barrels/day. Energy surges; airlines and transport suffer.' },
+  { title: 'Flash Crash', body: 'Algorithmic trading triggers a sudden 5% market-wide drop. Circuit breakers activated.' },
+  { title: 'Earnings Surprise', body: 'Major tech firms beat expectations by 20%. Pre-market futures up sharply.' },
+  { title: 'Banking Jitters', body: 'Regional bank failures spark panic selling in the financial sector.' },
+  { title: 'Inflation Shock', body: 'CPI comes in at 8.5% — far above estimates. Rate-hike fears rattle markets.' },
+  { title: 'Trade War Tariffs', body: 'New 25% tariffs announced on imports. Consumer goods and tech face headwinds.' },
+  { title: 'Biotech Breakthrough', body: 'Major FDA drug approval announced after Phase 3 success. Healthcare stocks surge.' },
+  { title: 'Crypto Contagion', body: 'Major stablecoin collapses. Risk-off sentiment spills into equities.' },
+  { title: 'Supply Chain Relief', body: 'Port backlogs clear as shipping costs fall 40%. Consumer stocks rally.' },
+]
 
 export async function mountTeacher(el) {
   container = el
@@ -43,7 +59,8 @@ export async function mountTeacher(el) {
 }
 
 export function unmountTeacher() {
-  if (annChannel) { supabase?.removeChannel(annChannel); annChannel = null }
+  if (annChannel)     { supabase?.removeChannel(annChannel); annChannel = null }
+  if (autoEventTimer) { clearInterval(autoEventTimer); autoEventTimer = null }
   container    = null
   profile      = null
   sessions     = []
@@ -421,6 +438,37 @@ async function renderDetail() {
         </div>
       </div>
 
+      <!-- Auto Events -->
+      <div class="bg-surface border border-border rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-text-primary">Auto Events</h2>
+            <p class="text-xs text-text-muted mt-0.5">Randomly fire preset market events at a set interval — keeps the session dynamic without manual input.</p>
+          </div>
+          <button id="auto-evt-toggle"
+            class="px-4 py-2 rounded-xl border text-sm font-semibold transition-colors
+            ${autoEventTimer
+              ? 'bg-warning/10 border-warning/40 text-warning hover:bg-warning/20'
+              : 'bg-surface-elevated border-border text-text-muted hover:text-text-primary hover:border-accent-primary/50'}">
+            ${autoEventTimer ? 'Stop' : 'Start'}
+          </button>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="text-xs text-text-muted">Interval:</label>
+          <select id="auto-evt-interval"
+            class="bg-bg border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary ${autoEventTimer ? 'opacity-50 pointer-events-none' : ''}">
+            <option value="60000">1 minute</option>
+            <option value="300000" selected>5 minutes</option>
+            <option value="600000">10 minutes</option>
+            <option value="900000">15 minutes</option>
+          </select>
+          ${autoEventTimer ? `<span class="text-xs text-warning">Running — next random event will fire automatically</span>` : ''}
+        </div>
+        <div class="text-xs text-text-muted">
+          ${PRESET_EVENTS.length} preset events available: ${PRESET_EVENTS.map(e => `<span class="font-medium text-text-secondary">${e.title}</span>`).join(', ')}
+        </div>
+      </div>
+
     </div>
   `
 
@@ -600,6 +648,30 @@ function bindDetailEvents(sess) {
     btn.disabled = false; btn.textContent = 'Post'
     container.querySelector('#ann-text').value = ''
     // Refresh announcements section by re-rendering the detail page
+    await renderDetail()
+  })
+
+  // Auto events toggle
+  container.querySelector('#auto-evt-toggle')?.addEventListener('click', async () => {
+    if (autoEventTimer) {
+      clearInterval(autoEventTimer)
+      autoEventTimer = null
+      await renderDetail()
+      return
+    }
+    const intervalMs = parseInt(container.querySelector('#auto-evt-interval')?.value || '300000')
+    const fireRandom = async () => {
+      const evt = PRESET_EVENTS[Math.floor(Math.random() * PRESET_EVENTS.length)]
+      await supabase.from('market_events').insert({
+        session_id: sess.id,
+        teacher_id: profile.id,
+        title:      evt.title,
+        body:       evt.body,
+        affects:    [],
+      })
+    }
+    await fireRandom()
+    autoEventTimer = setInterval(fireRandom, intervalMs)
     await renderDetail()
   })
 

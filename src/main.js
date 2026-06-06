@@ -24,6 +24,7 @@ import { mountTeacher,     unmountTeacher      } from './pages/teacher.js'
 import { mountResults,     unmountResults      } from './pages/results.js'
 import { mountHistory,     unmountHistory      } from './pages/history.js'
 import { mountHelp,        unmountHelp         } from './pages/help.js'
+import { mountLearn,       unmountLearn        } from './pages/learn.js'
 import { startTutorial } from './components/tutorial.js'
 import { checkAchievements } from './utils/achievements.js'
 import { supabase } from './lib/supabase.js'
@@ -50,6 +51,7 @@ function getRoute() {
   if (hash.startsWith('#profile'))       return { name: 'profile' }
   if (hash.startsWith('#history'))       return { name: 'history' }
   if (hash.startsWith('#help'))          return { name: 'help' }
+  if (hash.startsWith('#learn'))         return { name: 'learn' }
   return { name: 'dashboard' }
 }
 
@@ -69,6 +71,7 @@ function unmountCurrent() {
     case 'results':      unmountResults();      break
     case 'history':      unmountHistory();      break
     case 'help':         unmountHelp();         break
+    case 'learn':        unmountLearn();        break
     case 'auth':         unmountAuth();         break
   }
 }
@@ -94,27 +97,19 @@ function mount(route) {
     case 'results':      mountResults(main);                           break
     case 'history':      mountHistory(main);                           break
     case 'help':         mountHelp(main);                              break
+    case 'learn':        mountLearn(main);                             break
   }
 }
 
 // Show the narrow-screen banner (PRD §19.7) when viewport is under 1024px.
 function initNarrowBanner() {
-  const banner  = document.getElementById('narrow-banner')
-  const dismiss = document.getElementById('narrow-dismiss')
+  const banner = document.getElementById('narrow-banner')
   if (!banner) return
 
   const check = () => {
-    if (window.innerWidth < 1024 && !sessionStorage.getItem('narrow-dismissed')) {
-      banner.classList.remove('hidden')
-    } else {
-      banner.classList.add('hidden')
-    }
+    const show = window.innerWidth < 1024 && !sessionStorage.getItem('narrow-dismissed')
+    banner.style.display = show ? 'flex' : 'none'
   }
-
-  dismiss?.addEventListener('click', () => {
-    sessionStorage.setItem('narrow-dismissed', '1')
-    banner.classList.add('hidden')
-  })
 
   window.addEventListener('resize', check)
   check()
@@ -145,8 +140,68 @@ function watchSessionStatus() {
     .subscribe()
 }
 
+const ALL_THEMES = ['light','hacker','midnight','sunset','ocean','cyberpunk','rose','amber','nord','dracula','crimson','retro','solarized']
+
 export function applyTheme(theme) {
-  document.documentElement.classList.toggle('light', theme === 'light')
+  ALL_THEMES.forEach(t => document.documentElement.classList.toggle(t, t === theme))
+  if (theme === 'hacker') startMatrixRain()
+  else stopMatrixRain()
+}
+
+// ── Matrix rain ───────────────────────────────────────────────────────────────
+
+let _matrixCanvas = null
+let _matrixRaf    = null
+
+function startMatrixRain() {
+  if (_matrixCanvas) return
+  _matrixCanvas = document.createElement('canvas')
+  _matrixCanvas.id = 'matrix-rain'
+  _matrixCanvas.style.cssText = 'position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.09;'
+  document.body.prepend(_matrixCanvas)
+
+  const ctx = _matrixCanvas.getContext('2d')
+  let cols, drops
+
+  function resize() {
+    _matrixCanvas.width  = window.innerWidth
+    _matrixCanvas.height = window.innerHeight
+    cols  = Math.floor(window.innerWidth / 16)
+    drops = Array.from({ length: cols }, () => Math.random() * -50)
+  }
+  resize()
+  _matrixCanvas._resize = resize
+  window.addEventListener('resize', resize)
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0, 3, 0, 0.04)'
+    ctx.fillRect(0, 0, _matrixCanvas.width, _matrixCanvas.height)
+    ctx.font = '13px "JetBrains Mono", monospace'
+    drops.forEach((y, i) => {
+      // Leading bright character
+      ctx.fillStyle = '#afffbf'
+      ctx.globalAlpha = 0.9
+      ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 16, y * 16)
+      // Trail
+      ctx.fillStyle = '#00ff41'
+      ctx.globalAlpha = Math.random() * 0.5 + 0.3
+      ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 16, (y - 1) * 16)
+      ctx.globalAlpha = 1
+      if (y * 16 > _matrixCanvas.height && Math.random() > 0.975) drops[i] = 0
+      drops[i] += 0.6
+    })
+    _matrixRaf = requestAnimationFrame(draw)
+  }
+  draw()
+}
+
+function stopMatrixRain() {
+  if (_matrixRaf)    { cancelAnimationFrame(_matrixRaf); _matrixRaf = null }
+  if (_matrixCanvas) {
+    window.removeEventListener('resize', _matrixCanvas._resize)
+    _matrixCanvas.remove()
+    _matrixCanvas = null
+  }
 }
 
 function bootApp() {
@@ -158,7 +213,6 @@ function bootApp() {
   setInterval(tick, 3000)
 
   initNavbar()
-  initNarrowBanner()
 
   subscribe(() => checkAchievements())
 
@@ -221,4 +275,5 @@ async function init() {
   bootApp()
 }
 
+initNarrowBanner()
 init()

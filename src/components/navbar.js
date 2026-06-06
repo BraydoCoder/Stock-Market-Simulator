@@ -1,6 +1,7 @@
 import { getState, subscribe, xpProgress, markNotificationsRead, getUnreadCount } from '../state/store.js'
 import { isMarketOpen } from '../api/prices.js'
 import { pc, relativeTime } from '../utils/format.js'
+import { t } from '../i18n/index.js'
 
 const LEVEL_TITLES = [
   '', 'Rookie Pilot', 'Market Watcher', 'Trade Starter', 'Chart Reader',
@@ -29,7 +30,7 @@ export function initNavbar() {
   window.addEventListener('hashchange', highlightActive)
 }
 
-function renderNavbar() {
+export function renderNavbar() {
   const marketOpen = isMarketOpen()
   document.getElementById('navbar').innerHTML = `
     <nav class="fixed top-0 inset-x-0 z-[100] bg-surface/95 backdrop-blur-sm border-b border-border h-14 flex items-center">
@@ -42,12 +43,13 @@ function renderNavbar() {
 
         <!-- Nav links -->
         <div class="flex items-center gap-0.5 overflow-x-auto">
-          ${link('#dashboard',    'Dashboard')}
-          ${link('#stocks',       'Stocks')}
-          ${link('#portfolio',    'Portfolio')}
-          ${link('#history',      'History')}
-          ${link('#achievements', 'Achievements')}
-          ${link('#leaderboard',  'Leaderboard')}
+          ${link('#dashboard',    t('Dashboard'))}
+          ${link('#stocks',       t('Stocks'))}
+          ${link('#portfolio',    t('Portfolio'))}
+          ${link('#history',      t('History'))}
+          ${link('#achievements', t('Achievements'))}
+          ${link('#leaderboard',  t('Leaderboard'))}
+          ${link('#learn',        t('Learn'))}
         </div>
 
         <!-- Right side -->
@@ -57,12 +59,12 @@ function renderNavbar() {
           <div class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border
             ${marketOpen ? 'bg-gain/10 border-gain/30 text-gain' : 'bg-surface-elevated border-border text-text-muted'}">
             <span class="w-1.5 h-1.5 rounded-full ${marketOpen ? 'bg-gain animate-pulse' : 'bg-text-muted'}"></span>
-            ${marketOpen ? 'Open' : 'Closed'}
+            ${marketOpen ? t('Open') : t('Closed')}
           </div>
 
           <!-- Balance -->
           <div class="text-right hidden md:block">
-            <div class="text-[10px] text-text-muted uppercase tracking-wide leading-none mb-0.5">Balance</div>
+            <div class="text-[10px] text-text-muted uppercase tracking-wide leading-none mb-0.5">${t('Balance')}</div>
             <div id="nav-balance" class="text-sm font-semibold text-accent-primary tabular-nums">
               ${pc(getState().user.balance)}
             </div>
@@ -100,19 +102,22 @@ function renderNavbar() {
             <!-- Dropdown -->
             <div id="nav-dropdown" class="hidden absolute right-0 top-10 w-44 bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-50">
               <a href="#profile" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
-                Profile
+                ${t('Profile')}
               </a>
               <a href="#settings" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
-                Settings
+                ${t('Settings')}
               </a>
               <a href="#teacher" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
-                Teacher Panel
+                ${t('Teacher Panel')}
               </a>
               <a href="#help" class="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
-                Help / FAQ
+                ${t('Help / FAQ')}
               </a>
+              <button id="nav-feedback" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
+                Send Feedback
+              </button>
               <button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
-                Sign Out
+                ${t('Sign Out')}
               </button>
             </div>
           </div>
@@ -130,8 +135,8 @@ function renderNavbar() {
     <!-- Notification dropdown (outside nav for stacking) -->
     <div id="notif-dropdown" class="hidden fixed top-14 right-4 w-80 bg-surface border border-border rounded-xl shadow-2xl z-[150] overflow-hidden">
       <div class="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span class="font-semibold text-sm text-text-primary">Notifications</span>
-        <button id="mark-read-btn" class="text-[10px] text-accent-primary hover:underline">Mark all read</button>
+        <span class="font-semibold text-sm text-text-primary">${t('Notifications')}</span>
+        <button id="mark-read-btn" class="text-[10px] text-accent-primary hover:underline">${t('Mark all read')}</button>
       </div>
       <div id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-border">
         ${notifItems()}
@@ -145,7 +150,7 @@ function renderNavbar() {
 
 function notifItems() {
   const ns = getState().notifications.slice(0, 10)
-  if (!ns.length) return '<div class="px-4 py-6 text-center text-sm text-text-muted">No notifications yet.</div>'
+  if (!ns.length) return `<div class="px-4 py-6 text-center text-sm text-text-muted">${t('No notifications yet.')}</div>`
   return ns.map(n => `
     <div class="flex items-start gap-2 px-4 py-3 ${n.read ? 'opacity-60' : ''} hover:bg-surface-elevated transition-colors">
       <span class="text-base shrink-0">${notifIcon(n.type)}</span>
@@ -202,6 +207,13 @@ function bindNavEvents() {
     e.stopPropagation()
     dropdown?.classList.toggle('hidden')
     notifDrop?.classList.add('hidden')
+  })
+
+  // Feedback
+  document.getElementById('nav-feedback')?.addEventListener('click', async () => {
+    dropdown?.classList.add('hidden')
+    const { openFeedbackModal } = await import('./feedbackModal.js')
+    openFeedbackModal()
   })
 
   // Sign out

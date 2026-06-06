@@ -21,6 +21,189 @@
     --c-text-muted:       107 114 128;
   }
 
+  /* ── Additional themes ──────────────────────────── */
+
+  .midnight {
+    --c-bg:               10 14 40;
+    --c-surface:          18 24 60;
+    --c-surface-elevated: 28 38 88;
+    --c-border:           50 65 125;
+    --c-accent-primary:   56 189 248;
+    --c-accent-secondary: 99 145 241;
+    --c-gain:             34 197 94;
+    --c-loss:             239 68 68;
+    --c-warning:          250 204 21;
+    --c-text-primary:     226 232 240;
+    --c-text-secondary:   148 163 184;
+    --c-text-muted:       72 90 120;
+  }
+
+  .sunset {
+    --c-bg:               22 10 5;
+    --c-surface:          38 18 10;
+    --c-surface-elevated: 60 28 15;
+    --c-border:           132 60 30;
+    --c-accent-primary:   249 115 22;
+    --c-accent-secondary: 244 63 94;
+    --c-gain:             34 197 94;
+    --c-loss:             239 68 68;
+    --c-warning:          250 204 21;
+    --c-text-primary:     254 240 188;
+    --c-text-secondary:   253 186 116;
+    --c-text-muted:       185 105 60;
+  }
+
+  .ocean {
+    --c-bg:               3 12 22;
+    --c-surface:          5 20 40;
+    --c-surface-elevated: 8 34 62;
+    --c-border:           15 88 115;
+    --c-accent-primary:   6 182 212;
+    --c-accent-secondary: 34 211 238;
+    --c-gain:             34 197 94;
+    --c-loss:             239 68 68;
+    --c-warning:          250 204 21;
+    --c-text-primary:     207 250 254;
+    --c-text-secondary:   103 232 249;
+    --c-text-muted:       28 130 160;
+  }
+
+  .cyberpunk {
+    --c-bg:               5 0 12;
+    --c-surface:          12 0 26;
+    --c-surface-elevated: 24 0 48;
+    --c-border:           115 0 160;
+    --c-accent-primary:   255 0 255;
+    --c-accent-secondary: 255 232 0;
+    --c-gain:             0 255 130;
+    --c-loss:             255 50 100;
+    --c-warning:          255 232 0;
+    --c-text-primary:     255 200 255;
+    --c-text-secondary:   200 100 225;
+    --c-text-muted:       130 55 160;
+  }
+
+  .rose {
+    --c-bg:               18 10 14;
+    --c-surface:          30 16 22;
+    --c-surface-elevated: 48 24 34;
+    --c-border:           118 56 72;
+    --c-accent-primary:   251 113 133;
+    --c-accent-secondary: 215 165 75;
+    --c-gain:             34 197 94;
+    --c-loss:             239 68 68;
+    --c-warning:          250 204 21;
+    --c-text-primary:     254 226 226;
+    --c-text-secondary:   252 165 180;
+    --c-text-muted:       185 95 110;
+  }
+
+  .amber {
+    --c-bg:               10 5 0;
+    --c-surface:          22 10 0;
+    --c-surface-elevated: 36 18 0;
+    --c-border:           115 60 0;
+    --c-accent-primary:   251 191 36;
+    --c-accent-secondary: 245 158 11;
+    --c-gain:             180 220 60;
+    --c-loss:             239 68 68;
+    --c-warning:          251 191 36;
+    --c-text-primary:     255 220 120;
+    --c-text-secondary:   220 158 62;
+    --c-text-muted:       165 100 30;
+  }
+
+  .nord {
+    --c-bg:               24 28 38;
+    --c-surface:          36 42 54;
+    --c-surface-elevated: 46 52 68;
+    --c-border:           76 86 110;
+    --c-accent-primary:   136 192 208;
+    --c-accent-secondary: 163 190 140;
+    --c-gain:             163 190 140;
+    --c-loss:             191 97 106;
+    --c-warning:          235 203 139;
+    --c-text-primary:     236 239 244;
+    --c-text-secondary:   216 222 233;
+    --c-text-muted:       100 115 145;
+  }
+
+  .dracula {
+    --c-bg:               22 24 34;
+    --c-surface:          40 42 54;
+    --c-surface-elevated: 68 71 90;
+    --c-border:           98 114 164;
+    --c-accent-primary:   189 147 249;
+    --c-accent-secondary: 255 121 198;
+    --c-gain:             80 250 123;
+    --c-loss:             255 85 85;
+    --c-warning:          255 184 108;
+    --c-text-primary:     248 248 242;
+    --c-text-secondary:   180 185 212;
+    --c-text-muted:       98 114 164;
+  }
+
+  .crimson {
+    --c-bg:               14 4 4;
+    --c-surface:          26 8 8;
+    --c-surface-elevated: 46 14 14;
+    --c-border:           112 28 28;
+    --c-accent-primary:   220 38 38;
+    --c-accent-secondary: 251 113 133;
+    --c-gain:             34 197 94;
+    --c-loss:             239 68 68;
+    --c-warning:          250 204 21;
+    --c-text-primary:     254 226 226;
+    --c-text-secondary:   252 165 165;
+    --c-text-muted:       185 75 75;
+  }
+
+  .retro {
+    --c-bg:               10 0 22;
+    --c-surface:          18 0 40;
+    --c-surface-elevated: 30 0 62;
+    --c-border:           95 0 160;
+    --c-accent-primary:   0 255 255;
+    --c-accent-secondary: 255 0 200;
+    --c-gain:             0 255 130;
+    --c-loss:             255 50 100;
+    --c-warning:          255 255 0;
+    --c-text-primary:     220 210 255;
+    --c-text-secondary:   160 140 235;
+    --c-text-muted:       90 60 160;
+  }
+
+  .solarized {
+    --c-bg:               0 43 54;
+    --c-surface:          7 54 66;
+    --c-surface-elevated: 14 70 84;
+    --c-border:           88 110 117;
+    --c-accent-primary:   38 139 210;
+    --c-accent-secondary: 42 161 152;
+    --c-gain:             133 153 0;
+    --c-loss:             220 50 47;
+    --c-warning:          181 137 0;
+    --c-text-primary:     147 161 161;
+    --c-text-secondary:   101 123 131;
+    --c-text-muted:       88 110 117;
+  }
+
+  /* Hacker theme */
+  .hacker {
+    --c-bg:               0 3 0;
+    --c-surface:          0 10 2;
+    --c-surface-elevated: 0 20 5;
+    --c-border:           0 85 20;
+    --c-accent-primary:   0 255 65;
+    --c-accent-secondary: 0 220 200;
+    --c-gain:             0 255 65;
+    --c-loss:             255 50 50;
+    --c-warning:          255 220 0;
+    --c-text-primary:     0 230 60;
+    --c-text-secondary:   0 185 50;
+    --c-text-muted:       0 110 28;
+  }
+
   /* Light theme */
   .light {
     --c-bg:               248 250 252;
@@ -65,6 +248,9 @@
 /* Toast pointer-events fix */
 #toast-container > * { pointer-events: all; }
 
+/* Ensure app content stacks above matrix rain canvas (z-index: 1) */
+#app { position: relative; z-index: 2; }
+
 /* Smooth page transition */
 #main-content { transition: opacity 0.15s ease; }
 
@@ -74,3 +260,168 @@
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .animate-slide-down { animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Hacker theme effects ─────────────────────────────────────────────────── */
+
+/* CRT scanline overlay — sits above everything, pointer-events off */
+.hacker body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.09) 3px,
+    rgba(0, 0, 0, 0.09) 4px
+  );
+  animation: crt-flicker 9s infinite;
+}
+
+/* Subtle vignette to frame the screen */
+.hacker body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+@keyframes crt-flicker {
+  0%, 94%, 100% { opacity: 1; }
+  95%  { opacity: 0.90; }
+  96%  { opacity: 1;    }
+  97%  { opacity: 0.85; }
+  98%  { opacity: 1;    }
+  99%  { opacity: 0.92; }
+}
+
+/* STOCKPILOT logo glitch — RGB split + skew burst every ~7s */
+@keyframes hacker-glitch {
+  0%, 86%, 100% {
+    transform: none;
+    text-shadow: 0 0 10px rgba(0,255,65,0.8), 0 0 25px rgba(0,255,65,0.35);
+    filter: none;
+  }
+  87% {
+    transform: translate(-5px, 1px);
+    text-shadow: 5px 0 #ff0070, -5px 0 #00ffff, 0 0 10px rgba(0,255,65,0.8);
+    filter: brightness(1.4);
+  }
+  88% {
+    transform: translate(5px, -2px) skewX(-4deg);
+    text-shadow: -5px 0 #ff0070, 5px 0 #00ffff;
+    filter: brightness(0.7);
+  }
+  89% {
+    transform: translate(-3px, 2px);
+    text-shadow: 3px 0 #ff0070, 0 0 10px rgba(0,255,65,0.8);
+    filter: none;
+  }
+  90% {
+    transform: translate(3px, -1px) skewX(5deg);
+    text-shadow: -3px 0 #00ffff;
+  }
+  91% {
+    transform: translate(-2px, 1px);
+    text-shadow: 2px 0 #ff0070, -2px 0 #00ffff;
+    filter: brightness(1.2);
+  }
+  92% {
+    transform: none;
+    text-shadow: 0 0 10px rgba(0,255,65,0.8), 0 0 25px rgba(0,255,65,0.35);
+    filter: none;
+  }
+}
+
+.hacker nav a[href="#dashboard"] {
+  display: inline-block;
+  text-shadow: 0 0 10px rgba(0,255,65,0.8), 0 0 25px rgba(0,255,65,0.35);
+  animation: hacker-glitch 7s infinite;
+}
+
+/* Green phosphor glow on focused inputs */
+.hacker input:focus,
+.hacker textarea:focus,
+.hacker select:focus {
+  box-shadow: 0 0 0 2px rgba(0,255,65,0.4), 0 0 14px rgba(0,255,65,0.2) !important;
+}
+
+/* Subtle inner glow on cards */
+.hacker .rounded-2xl {
+  box-shadow: 0 0 0 1px rgba(0,255,65,0.06), inset 0 0 24px rgba(0,255,65,0.025);
+}
+
+/* Scrollbar */
+.hacker ::-webkit-scrollbar-track { background: rgb(0 5 1); }
+.hacker ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 3px; }
+.hacker ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.45); }
+
+/* ─── Cyberpunk effects ─────────────────────────────────────────────────────── */
+.cyberpunk body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 0, 255, 0.04) 3px,
+    rgba(255, 0, 255, 0.04) 4px
+  );
+}
+.cyberpunk nav a[href="#dashboard"] {
+  display: inline-block;
+  text-shadow: 0 0 10px rgba(255,0,255,0.9), 0 0 25px rgba(255,0,255,0.4), 0 0 50px rgba(255,232,0,0.15);
+  animation: hacker-glitch 6s infinite;
+}
+.cyberpunk .rounded-2xl {
+  box-shadow: 0 0 0 1px rgba(255,0,255,0.06), inset 0 0 20px rgba(255,0,255,0.02);
+}
+
+/* ─── Retro effects ─────────────────────────────────────────────────────────── */
+.retro body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 255, 255, 0.04) 3px,
+    rgba(0, 255, 255, 0.04) 4px
+  );
+}
+.retro nav a[href="#dashboard"] {
+  display: inline-block;
+  text-shadow: 0 0 10px rgba(0,255,255,0.9), 0 0 25px rgba(0,255,255,0.4), 0 0 50px rgba(255,0,200,0.2);
+  animation: hacker-glitch 9s infinite;
+}
+
+/* ─── Amber effects ──────────────────────────────────────────────────────────── */
+.amber nav a[href="#dashboard"] {
+  text-shadow: 0 0 10px rgba(251,191,36,0.8), 0 0 28px rgba(251,191,36,0.3);
+}
+.amber ::-webkit-scrollbar-thumb { background: rgba(251,191,36,0.3); border-radius: 3px; }
+
+/* ─── Ocean effects ──────────────────────────────────────────────────────────── */
+.ocean nav a[href="#dashboard"] {
+  text-shadow: 0 0 10px rgba(6,182,212,0.7), 0 0 25px rgba(6,182,212,0.3);
+}
+
+/* ─── Dracula effects ────────────────────────────────────────────────────────── */
+.dracula nav a[href="#dashboard"] {
+  text-shadow: 0 0 10px rgba(189,147,249,0.7), 0 0 25px rgba(189,147,249,0.3);
+}
+
+/* ─── Midnight effects ───────────────────────────────────────────────────────── */
+.midnight nav a[href="#dashboard"] {
+  text-shadow: 0 0 10px rgba(56,189,248,0.7), 0 0 25px rgba(56,189,248,0.3);
+}

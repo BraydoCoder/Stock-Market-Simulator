@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase.js'
 import { getActiveSessionId, leaveSession } from '../lib/session.js'
 import { getUser } from '../utils/auth.js'
 import { pc, pct } from '../utils/format.js'
+import { getState } from '../state/store.js'
 
 let container  = null
 let rows       = []
@@ -149,6 +150,25 @@ function myStatsHTML(row, startBal) {
   const gain  = pl(row, startBal)
   const gainP = plPct(row, startBal)
   const rankLabel = row.rank === 1 ? '1st' : row.rank === 2 ? '2nd' : row.rank === 3 ? '3rd' : `#${row.rank}`
+
+  const state = getState()
+  const txs   = state.transactions
+  const tradeCount = txs.length
+  const badgesCount = state.achievements.length
+
+  // Best/worst stock by realized P&L on sell transactions
+  const plBySymbol = {}
+  txs.forEach(t => {
+    if (t.type === 'sell' && t.realizedPL != null) {
+      plBySymbol[t.symbol] = (plBySymbol[t.symbol] ?? 0) + t.realizedPL
+    }
+  })
+  const plEntries = Object.entries(plBySymbol)
+  const bestEntry  = plEntries.length ? plEntries.reduce((a, b) => b[1] > a[1] ? b : a) : null
+  const worstEntry = plEntries.length ? plEntries.reduce((a, b) => b[1] < a[1] ? b : a) : null
+  const bestLabel  = bestEntry  ? `${bestEntry[0]} ${bestEntry[1] >= 0 ? '+' : ''}${pc(bestEntry[1])}` : '—'
+  const worstLabel = worstEntry ? `${worstEntry[0]} ${worstEntry[1] >= 0 ? '+' : ''}${pc(worstEntry[1])}` : '—'
+
   return `
     <div class="bg-surface border border-accent-secondary/30 rounded-2xl p-5">
       <h2 class="font-semibold text-text-primary mb-4">Your Results</h2>
@@ -157,6 +177,10 @@ function myStatsHTML(row, startBal) {
         ${statTile('Portfolio Value', pc(row.total_value), '')}
         ${statTile('Total P&L', `${gain >= 0 ? '+' : ''}${pc(gain)}`, gain >= 0 ? 'text-gain' : 'text-loss')}
         ${statTile('Return', `${gainP >= 0 ? '+' : ''}${gainP.toFixed(2)}%`, gainP >= 0 ? 'text-gain' : 'text-loss')}
+        ${statTile('Total Trades', tradeCount, '')}
+        ${statTile('Best Stock', bestLabel, bestEntry && bestEntry[1] >= 0 ? 'text-gain' : 'text-loss')}
+        ${statTile('Worst Stock', worstLabel, worstEntry && worstEntry[1] < 0 ? 'text-loss' : 'text-gain')}
+        ${statTile('Badges Earned', `${badgesCount}`, 'text-accent-secondary')}
       </div>
       <div class="mt-3 flex items-center gap-2">
         <div class="flex-1 h-2 bg-surface-elevated rounded-full overflow-hidden">
