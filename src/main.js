@@ -35,6 +35,12 @@ import { getActiveSessionId } from './lib/session.js'
 // Expose STOCKS for use in achievement checks (avoids circular imports)
 window.__STOCKS__ = { STOCKS }
 
+window.addEventListener('error', e => {
+  if (document.body.children.length === 0 || document.getElementById('app')?.innerHTML.trim() === '') {
+    document.body.innerHTML = `<div style="position:fixed;inset:0;background:#0a0e1a;display:flex;align-items:center;justify-content:center;font-family:monospace;padding:2rem"><div style="color:#ef4444;max-width:600px"><div style="font-size:1.2rem;font-weight:bold;margin-bottom:1rem">Startup error</div><pre style="white-space:pre-wrap;font-size:.8rem;color:#f9fafb">${e.message}\n${e.filename}:${e.lineno}</pre></div></div>`
+  }
+})
+
 let currentRoute = null
 
 function getRoute() {
@@ -276,4 +282,6 @@ async function init() {
 }
 
 initNarrowBanner()
-init()
+init().catch(err => {
+  document.body.innerHTML = `<div style="position:fixed;inset:0;background:#0a0e1a;display:flex;align-items:center;justify-content:center;font-family:monospace;padding:2rem"><div style="color:#ef4444;max-width:600px"><div style="font-size:1.2rem;font-weight:bold;margin-bottom:1rem">Startup error — please report this</div><pre style="white-space:pre-wrap;font-size:.8rem;color:#f9fafb">${err?.stack ?? err}</pre></div></div>`
+})
