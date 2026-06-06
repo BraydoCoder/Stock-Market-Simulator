@@ -239,7 +239,8 @@ async function init() {
 
   // If Supabase is configured, gate the app behind auth.
   if (supabase) {
-    const session = await getSession()
+    const timeout = new Promise(res => setTimeout(() => res(null), 4000))
+    const session = await Promise.race([getSession(), timeout])
 
     if (!session) {
       currentRoute = 'auth'
