@@ -207,14 +207,6 @@ function bootApp() {
   window.addEventListener('hashchange', () => mount(getRoute()))
   mount(getRoute())
 
-  // Dismiss splash screen once the app has mounted
-  const splash = document.getElementById('splash')
-  if (splash) {
-    const bar = document.getElementById('splash-bar')
-    if (bar) bar.style.width = '100%'
-    setTimeout(() => { splash.style.opacity = '0'; splash.style.transition = 'opacity .3s'; setTimeout(() => splash.remove(), 300) }, 200)
-  }
-
 
   // Start listening for teacher market events if already in a session
   if (supabase && getActiveSessionId()) {
@@ -230,6 +222,17 @@ function bootApp() {
   })
 }
 
+function dismissSplash() {
+  const splash = document.getElementById('splash')
+  if (!splash) return
+  document.getElementById('splash-bar').style.width = '100%'
+  setTimeout(() => {
+    splash.style.opacity = '0'
+    splash.style.transition = 'opacity .3s'
+    setTimeout(() => splash.remove(), 300)
+  }, 150)
+}
+
 async function init() {
   const main = document.getElementById('main-content')
 
@@ -238,7 +241,7 @@ async function init() {
     const session = await getSession()
 
     if (!session) {
-      // Show auth page; wait for successful login before booting the app.
+      dismissSplash()
       currentRoute = 'auth'
       mountAuth(main)
 
@@ -265,6 +268,7 @@ async function init() {
     })
   }
 
+  dismissSplash()
   bootApp()
 }
 
