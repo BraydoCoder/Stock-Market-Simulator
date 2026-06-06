@@ -18,9 +18,9 @@ export default {
         'text-muted':      'rgb(var(--c-text-muted) / <alpha-value>)',
       },
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
-        body:    ['Space Grotesk', 'sans-serif'],
-        mono:    ['"JetBrains Mono"', 'monospace'],
+        display: ['var(--font-display)', 'sans-serif'],
+        body:    ['var(--font-body)',    'sans-serif'],
+        mono:    ['var(--font-mono)',    'monospace'],
       },
       boxShadow: {
         'glow-green': '0 0 20px rgba(16,185,129,0.3)',

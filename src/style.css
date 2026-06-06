@@ -7,6 +7,9 @@
 
   /* Dark theme (default) */
   :root {
+    --font-display: 'Orbitron';
+    --font-body:    'Space Grotesk';
+    --font-mono:    'Fira Code';
     --c-bg:               10 14 26;
     --c-surface:          17 24 39;
     --c-surface-elevated: 31 41 55;
@@ -24,6 +27,9 @@
   /* ── Additional themes ──────────────────────────── */
 
   .midnight {
+    --font-display: 'Exo 2';
+    --font-body:    'Exo 2';
+    --font-mono:    'Fira Code';
     --c-bg:               10 14 40;
     --c-surface:          18 24 60;
     --c-surface-elevated: 28 38 88;
@@ -39,6 +45,9 @@
   }
 
   .sunset {
+    --font-display: 'Quicksand';
+    --font-body:    'Poppins';
+    --font-mono:    'Fira Code';
     --c-bg:               22 10 5;
     --c-surface:          38 18 10;
     --c-surface-elevated: 60 28 15;
@@ -54,6 +63,9 @@
   }
 
   .ocean {
+    --font-display: 'Raleway';
+    --font-body:    'Raleway';
+    --font-mono:    'Fira Code';
     --c-bg:               3 12 22;
     --c-surface:          5 20 40;
     --c-surface-elevated: 8 34 62;
@@ -69,6 +81,9 @@
   }
 
   .cyberpunk {
+    --font-display: 'Audiowide';
+    --font-body:    'Rajdhani';
+    --font-mono:    'Fira Code';
     --c-bg:               5 0 12;
     --c-surface:          12 0 26;
     --c-surface-elevated: 24 0 48;
@@ -84,6 +99,9 @@
   }
 
   .rose {
+    --font-display: 'Playfair Display';
+    --font-body:    'Lato';
+    --font-mono:    'Fira Code';
     --c-bg:               18 10 14;
     --c-surface:          30 16 22;
     --c-surface-elevated: 48 24 34;
@@ -99,6 +117,9 @@
   }
 
   .amber {
+    --font-display: 'Merriweather';
+    --font-body:    'Lora';
+    --font-mono:    'Fira Code';
     --c-bg:               10 5 0;
     --c-surface:          22 10 0;
     --c-surface-elevated: 36 18 0;
@@ -114,6 +135,9 @@
   }
 
   .nord {
+    --font-display: 'Josefin Sans';
+    --font-body:    'Mulish';
+    --font-mono:    'Fira Code';
     --c-bg:               24 28 38;
     --c-surface:          36 42 54;
     --c-surface-elevated: 46 52 68;
@@ -129,6 +153,9 @@
   }
 
   .dracula {
+    --font-display: 'Fira Code';
+    --font-body:    'Fira Code';
+    --font-mono:    'Fira Code';
     --c-bg:               22 24 34;
     --c-surface:          40 42 54;
     --c-surface-elevated: 68 71 90;
@@ -144,6 +171,9 @@
   }
 
   .crimson {
+    --font-display: 'Cinzel';
+    --font-body:    'Crimson Text';
+    --font-mono:    'Fira Code';
     --c-bg:               14 4 4;
     --c-surface:          26 8 8;
     --c-surface-elevated: 46 14 14;
@@ -159,6 +189,9 @@
   }
 
   .retro {
+    --font-display: 'Press Start 2P';
+    --font-body:    'VT323';
+    --font-mono:    'VT323';
     --c-bg:               10 0 22;
     --c-surface:          18 0 40;
     --c-surface-elevated: 30 0 62;
@@ -174,6 +207,9 @@
   }
 
   .solarized {
+    --font-display: 'Ubuntu';
+    --font-body:    'Ubuntu';
+    --font-mono:    'Ubuntu Mono';
     --c-bg:               0 43 54;
     --c-surface:          7 54 66;
     --c-surface-elevated: 14 70 84;
@@ -190,6 +226,9 @@
 
   /* Hacker theme */
   .hacker {
+    --font-display: 'VT323';
+    --font-body:    'Share Tech Mono';
+    --font-mono:    'Share Tech Mono';
     --c-bg:               0 3 0;
     --c-surface:          0 10 2;
     --c-surface-elevated: 0 20 5;
@@ -206,6 +245,9 @@
 
   /* Light theme */
   .light {
+    --font-display: 'Nunito';
+    --font-body:    'Inter';
+    --font-mono:    'Fira Code';
     --c-bg:               248 250 252;
     --c-surface:          255 255 255;
     --c-surface-elevated: 241 245 249;
@@ -385,6 +427,7 @@
 }
 
 /* ─── Retro effects ─────────────────────────────────────────────────────────── */
+.retro body { font-size: 1.05rem; }
 .retro body::after {
   content: '';
   position: fixed;
