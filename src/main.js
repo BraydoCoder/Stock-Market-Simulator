@@ -234,6 +234,7 @@ function dismissSplash() {
 }
 
 async function init() {
+  dismissSplash()
   const main = document.getElementById('main-content')
 
   // If Supabase is configured, gate the app behind auth.
@@ -241,7 +242,6 @@ async function init() {
     const session = await getSession()
 
     if (!session) {
-      dismissSplash()
       currentRoute = 'auth'
       mountAuth(main)
 
@@ -268,7 +268,6 @@ async function init() {
     })
   }
 
-  dismissSplash()
   bootApp()
 }
 
