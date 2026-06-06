@@ -102,19 +102,6 @@ function mount(route) {
   }
 }
 
-// Show the narrow-screen banner (PRD §19.7) when viewport is under 1024px.
-function initNarrowBanner() {
-  const banner = document.getElementById('narrow-banner')
-  if (!banner) return
-
-  const check = () => {
-    const show = window.innerWidth < 1024 && !sessionStorage.getItem('narrow-dismissed')
-    banner.style.display = show ? 'flex' : 'none'
-  }
-
-  window.addEventListener('resize', check)
-  check()
-}
 
 let sessionWatcher = null
 
@@ -276,7 +263,4 @@ async function init() {
   bootApp()
 }
 
-initNarrowBanner()
-init().catch(err => {
-  document.body.innerHTML = `<div style="position:fixed;inset:0;background:#0a0e1a;display:flex;align-items:center;justify-content:center;font-family:monospace;padding:2rem"><div style="color:#ef4444;max-width:600px"><div style="font-size:1.2rem;font-weight:bold;margin-bottom:1rem">Startup error — please report this</div><pre style="white-space:pre-wrap;font-size:.8rem;color:#f9fafb">${err?.stack ?? err}</pre></div></div>`
-})
+init()
