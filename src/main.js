@@ -6,6 +6,7 @@
 // and refreshed every 60 seconds. Otherwise the simulation tick runs.
 
 import './style.css'
+import { inject } from '@vercel/analytics'
 import { initNavbar } from './components/navbar.js'
 import { initPrices, tick, startFinnhubPolling } from './api/prices.js'
 import { FINNHUB_API_KEY } from './config.js'
@@ -239,6 +240,9 @@ function bootApp() {
 
 async function init() {
   const main = document.getElementById('main-content')
+
+  // Initialize Vercel Web Analytics
+  inject()
 
   // If Supabase is configured, gate the app behind auth.
   if (supabase) {
