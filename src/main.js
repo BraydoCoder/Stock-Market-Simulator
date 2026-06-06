@@ -240,11 +240,12 @@ async function init() {
   // Boot the app immediately so the UI is always visible.
   bootApp()
 
-  // Then check auth state in the background.
+  // Check auth state — getSession() reads localStorage so is near-instant.
+  // Fall back to offline mode after 3s if Supabase is unreachable.
   if (!supabase) return
 
   try {
-    const timeout  = new Promise(res => setTimeout(() => res(null), 5000))
+    const timeout  = new Promise(res => setTimeout(() => res(null), 3000))
     const session  = await Promise.race([getSession(), timeout])
 
     if (!session) {
