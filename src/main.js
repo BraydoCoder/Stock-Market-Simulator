@@ -207,9 +207,6 @@ function bootApp() {
   window.addEventListener('hashchange', () => mount(getRoute()))
   mount(getRoute())
 
-  if (!getState().settings.tutorialDone) {
-    setTimeout(startTutorial, 1200)
-  }
 
   // Start listening for teacher market events if already in a session
   if (supabase && getActiveSessionId()) {

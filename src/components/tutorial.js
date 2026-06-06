@@ -64,7 +64,7 @@ function buildOverlay() {
     <!-- Tooltip bubble -->
     <div id="tutorial-tooltip"
       class="pointer-events-auto absolute bg-surface border border-accent-primary/50 rounded-2xl p-5 shadow-2xl w-72 transition-all duration-300">
-      <button id="tutorial-skip" class="absolute top-3 right-3 text-text-muted hover:text-text-primary text-xs${getState().settings.tutorialDone ? '' : ' hidden'}">Skip ✕</button>
+      <button id="tutorial-skip" class="absolute top-3 right-3 text-text-muted hover:text-text-primary text-xs">Skip ✕</button>
       <div id="tutorial-step-label" class="text-[10px] text-accent-secondary uppercase tracking-widest mb-1"></div>
       <div id="tutorial-title" class="font-semibold text-text-primary mb-2"></div>
       <div id="tutorial-desc" class="text-sm text-text-muted leading-relaxed mb-4"></div>

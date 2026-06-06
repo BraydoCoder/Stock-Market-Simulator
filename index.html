@@ -9,8 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
-<body style="background:white;color:black" class="bg-bg text-text-primary font-body min-h-screen antialiased">
-  <div style="position:fixed;top:0;left:0;z-index:99999;background:lime;color:black;padding:8px;font-size:14px;font-family:monospace">PAGE IS LOADING...</div>
+<body class="bg-bg text-text-primary font-body min-h-screen antialiased">
 
   <div id="app">
     <div id="navbar"></div>
@@ -18,15 +17,7 @@
     <div id="modal-container"></div>
     <div id="toast-container" class="fixed top-4 right-4 z-[500] flex flex-col gap-2 pointer-events-none"></div>
   </div>
-  <script>
-    window.addEventListener('error', function(e) {
-      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#111;color:#f00;font-family:monospace;padding:2rem;overflow:auto;z-index:9999"><h2>JS Error</h2><pre>' + (e.error ? e.error.stack : e.message + ' ' + e.filename + ':' + e.lineno) + '</pre></div>'
-    })
-    window.addEventListener('unhandledrejection', function(e) {
-      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#111;color:#f00;font-family:monospace;padding:2rem;overflow:auto;z-index:9999"><h2>Unhandled Promise Rejection</h2><pre>' + (e.reason?.stack || e.reason) + '</pre></div>'
-    })
-  </script>
-  <script type="module" src="/src/main.js"></script>
+<script type="module" src="/src/main.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </body>
