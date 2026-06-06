@@ -32,6 +32,14 @@
     <div id="modal-container"></div>
     <div id="toast-container" class="fixed top-4 right-4 z-[500] flex flex-col gap-2 pointer-events-none"></div>
   </div>
+  <script>
+    window.addEventListener('error', function(e) {
+      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#111;color:#f00;font-family:monospace;padding:2rem;overflow:auto;z-index:9999"><h2>JS Error</h2><pre>' + (e.error ? e.error.stack : e.message + ' ' + e.filename + ':' + e.lineno) + '</pre></div>'
+    })
+    window.addEventListener('unhandledrejection', function(e) {
+      document.body.innerHTML = '<div style="position:fixed;inset:0;background:#111;color:#f00;font-family:monospace;padding:2rem;overflow:auto;z-index:9999"><h2>Unhandled Promise Rejection</h2><pre>' + (e.reason?.stack || e.reason) + '</pre></div>'
+    })
+  </script>
   <script type="module" src="/src/main.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
