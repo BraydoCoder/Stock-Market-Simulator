@@ -195,6 +195,21 @@ export function applyPriceShock(affects) {
   window.dispatchEvent(new Event('prices-updated'))
 }
 
+// ── Time machine helpers ──────────────────────────────────────────────────────
+
+// Returns a plain-object copy of the current price store for snapshotting.
+export function captureSnapshot() {
+  const snap = {}
+  store.forEach((val, sym) => { snap[sym] = { ...val } })
+  return snap
+}
+
+// Overwrites the price store with a previously captured snapshot and notifies the UI.
+export function restorePrices(snapshot) {
+  Object.entries(snapshot).forEach(([sym, val]) => store.set(sym, { ...val }))
+  window.dispatchEvent(new Event('prices-updated'))
+}
+
 // ── Internals ─────────────────────────────────────────────────────────────────
 
 function round2(n) { return Math.round(n * 100) / 100 }

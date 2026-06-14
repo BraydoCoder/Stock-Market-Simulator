@@ -7,7 +7,7 @@
 
 import './style.css'
 import { initNavbar } from './components/navbar.js'
-import { initPrices, tick, startFinnhubPolling } from './api/prices.js'
+import { initPrices, startFinnhubPolling } from './api/prices.js'
 import { FINNHUB_API_KEY } from './config.js'
 import { getState, subscribe } from './state/store.js'
 import { STOCKS } from './data/stocks.js'
@@ -26,6 +26,8 @@ import { mountResults,     unmountResults      } from './pages/results.js'
 import { mountHistory,     unmountHistory      } from './pages/history.js'
 import { mountHelp,        unmountHelp         } from './pages/help.js'
 import { mountLearn,       unmountLearn        } from './pages/learn.js'
+import { mountTimeControls } from './components/timeControls.js'
+import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
 import { checkAchievements } from './utils/achievements.js'
 import { supabase } from './lib/supabase.js'
@@ -200,9 +202,10 @@ function bootApp() {
   if (FINNHUB_API_KEY) {
     startFinnhubPolling()
   }
-  setInterval(tick, 3000)
+  startTimeMachine()
 
   initNavbar()
+  mountTimeControls()
 
   subscribe(() => checkAchievements())
 
