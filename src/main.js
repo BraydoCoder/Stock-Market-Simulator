@@ -247,15 +247,19 @@ async function init() {
 
   if (!supabase) return
 
+  const tcRoot = () => document.getElementById('time-controls-root')
+
   // Sign-out and token-refresh errors go straight to login, not the welcome page.
   function showAuth() {
     if (currentRoute === 'auth') return
     unmountCurrent()
     currentRoute = 'auth'
+    tcRoot()?.classList.add('hidden')
     mountAuth(main)
     window.addEventListener('auth-ready', () => {
       unmountAuth()
       currentRoute = null
+      tcRoot()?.classList.remove('hidden')
       mount(getRoute())
     }, { once: true })
   }
@@ -265,6 +269,7 @@ async function init() {
     if (currentRoute === 'welcome' || currentRoute === 'auth') return
     unmountCurrent()
     currentRoute = 'welcome'
+    tcRoot()?.classList.add('hidden')
     mountWelcome(main, () => {
       unmountWelcome()
       currentRoute = null
