@@ -13,7 +13,7 @@ import { tick, captureSnapshot, restorePrices } from '../api/prices.js'
 const SPEEDS       = [1, 5, 25, 100]
 const BASE_MS      = 3000      // ms per tick at 1×
 const MAX_HISTORY  = 300       // ~15 min of 1× history (one snapshot per tick)
-const MAX_TRAVEL   = 3650      // cap date-travel at ~10 years of business days
+const MAX_TRAVEL   = Infinity  // no cap — user can travel to any future date
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ export async function travelToDate(year, month, day) {
 
   // Future — count business days between current and target
   const bizDays = _countBizDays(current, target)
-  if (bizDays > MAX_TRAVEL) return `That's ${bizDays} business days away. Please choose a date within ~10 years.`
+  if (bizDays > MAX_TRAVEL) return `That's too far to simulate.`
 
   // Batch-simulate, yielding to the browser every 100 ticks so the UI stays responsive
   clearTimeout(_tickTimer)

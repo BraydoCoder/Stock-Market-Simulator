@@ -63,9 +63,7 @@ function _render() {
   const ticksBack = histIdx !== null ? (historySize - 1 - histIdx) : 0
   const dateLabel = _fmtDate(simDate)
 
-  // Min/max for the date input
-  const minVal = minDate ? _isoDate(minDate) : ''
-  const maxVal = (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 10); return _isoDate(d) })()
+  const minVal = minDate ? _isoDate(minDate) : '2000-01-01'
   const curVal = _isoDate(simDate)
 
   _el.innerHTML = `
@@ -78,7 +76,7 @@ function _render() {
         <div class="flex items-center gap-2 bg-surface border border-border rounded-xl px-3 py-2 shadow-xl whitespace-nowrap">
           <span class="text-text-muted">Travel to:</span>
           <input id="tc-date-input" type="date"
-            value="${curVal}" min="2000-01-01" max="${maxVal}"
+            value="${curVal}" min="${minVal}"
             class="bg-surface-elevated border border-border rounded-lg px-2 py-1 text-text-primary
                    outline-none focus:border-accent-primary transition-colors cursor-pointer text-xs" />
           <button id="tc-travel-go"
