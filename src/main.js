@@ -19,6 +19,7 @@ import { mountAchievements, unmountAchievements } from './pages/achievements.js'
 import { mountSettings,     unmountSettings     } from './pages/settings.js'
 import { mountProfile,      unmountProfile      } from './pages/profile.js'
 import { mountAuth,         unmountAuth         } from './pages/auth.js'
+import { mountWelcome,      unmountWelcome      } from './pages/welcome.js'
 import { mountLeaderboard,  unmountLeaderboard  } from './pages/leaderboard.js'
 import { mountTeacher,     unmountTeacher      } from './pages/teacher.js'
 import { mountResults,     unmountResults      } from './pages/results.js'
@@ -74,6 +75,7 @@ function unmountCurrent() {
     case 'help':         unmountHelp();         break
     case 'learn':        unmountLearn();        break
     case 'auth':         unmountAuth();         break
+    case 'welcome':      unmountWelcome();      break
   }
 }
 
@@ -242,8 +244,7 @@ async function init() {
 
   if (!supabase) return
 
-  // Shows the auth screen and waits for the user to sign in.
-  // Guard prevents double-mounting if called while already on auth.
+  // Sign-out and token-refresh errors go straight to login, not the welcome page.
   function showAuth() {
     if (currentRoute === 'auth') return
     unmountCurrent()
@@ -256,6 +257,18 @@ async function init() {
     }, { once: true })
   }
 
+  // First-time / logged-out visitors see the welcome page first.
+  function showWelcome() {
+    if (currentRoute === 'welcome' || currentRoute === 'auth') return
+    unmountCurrent()
+    currentRoute = 'welcome'
+    mountWelcome(main, () => {
+      unmountWelcome()
+      currentRoute = null
+      showAuth()
+    })
+  }
+
   try {
     // Register the auth state listener before the session check so that
     // SIGNED_OUT is always handled (fixes sign-out when user came via login form)
@@ -263,18 +276,18 @@ async function init() {
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         showAuth()
-      } else if (event === 'SIGNED_IN' && currentRoute === 'auth') {
-        unmountAuth()
+      } else if (event === 'SIGNED_IN' && (currentRoute === 'auth' || currentRoute === 'welcome')) {
+        unmountCurrent()
         currentRoute = null
         mount(getRoute())
       }
     })
 
     // Quick session check — reads localStorage, near-instant for a valid session.
-    // Falls back to showing auth after 3s if the token refresh call stalls.
+    // Falls back to showing welcome after 3s if the token refresh call stalls.
     const timeout = new Promise(res => setTimeout(() => res(null), 3000))
     const session = await Promise.race([getSession(), timeout])
-    if (!session) showAuth()
+    if (!session) showWelcome()
   } catch (_) {
     // Supabase unavailable — continue in offline mode
   }
