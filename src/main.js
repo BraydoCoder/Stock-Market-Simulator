@@ -240,38 +240,41 @@ async function init() {
   // Boot the app immediately so the UI is always visible.
   bootApp()
 
-  // Check auth state — getSession() reads localStorage so is near-instant.
-  // Fall back to offline mode after 3s if Supabase is unreachable.
   if (!supabase) return
 
+  // Shows the auth screen and waits for the user to sign in.
+  // Guard prevents double-mounting if called while already on auth.
+  function showAuth() {
+    if (currentRoute === 'auth') return
+    unmountCurrent()
+    currentRoute = 'auth'
+    mountAuth(main)
+    window.addEventListener('auth-ready', () => {
+      unmountAuth()
+      currentRoute = null
+      mount(getRoute())
+    }, { once: true })
+  }
+
   try {
-    const timeout  = new Promise(res => setTimeout(() => res(null), 3000))
-    const session  = await Promise.race([getSession(), timeout])
-
-    if (!session) {
-      unmountCurrent()
-      currentRoute = 'auth'
-      mountAuth(main)
-      window.addEventListener('auth-ready', () => {
-        unmountAuth()
-        currentRoute = null
-        bootApp()
-      }, { once: true })
-      return
-    }
-
+    // Register the auth state listener before the session check so that
+    // SIGNED_OUT is always handled (fixes sign-out when user came via login form)
+    // and SIGNED_IN auto-dismisses the auth screen on token auto-refresh.
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        unmountCurrent()
-        currentRoute = 'auth'
-        mountAuth(main)
-        window.addEventListener('auth-ready', () => {
-          unmountAuth()
-          currentRoute = null
-          bootApp()
-        }, { once: true })
+        showAuth()
+      } else if (event === 'SIGNED_IN' && currentRoute === 'auth') {
+        unmountAuth()
+        currentRoute = null
+        mount(getRoute())
       }
     })
+
+    // Quick session check — reads localStorage, near-instant for a valid session.
+    // Falls back to showing auth after 3s if the token refresh call stalls.
+    const timeout = new Promise(res => setTimeout(() => res(null), 3000))
+    const session = await Promise.race([getSession(), timeout])
+    if (!session) showAuth()
   } catch (_) {
     // Supabase unavailable — continue in offline mode
   }
