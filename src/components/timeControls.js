@@ -13,17 +13,27 @@ import {
   travelToDate,
 } from '../lib/timeMachine.js'
 
-let _el       = null
-let _sub      = null
-let _travelOpen = false
+let _el          = null
+let _sub         = null
+let _travelOpen  = false
 let _travelError = ''
+let _rafPending  = false
+
+// Throttle tick-driven re-renders to one per animation frame (~60 fps max).
+// This prevents the 100× mode (33 ticks/s) from wiping buttons and form
+// inputs faster than the user can interact with them.
+function _scheduleRender() {
+  if (_rafPending) return
+  _rafPending = true
+  requestAnimationFrame(() => { _rafPending = false; _render() })
+}
 
 export function mountTimeControls() {
   _el = document.createElement('div')
   _el.id = 'time-controls-root'
   document.body.appendChild(_el)
   _render()
-  _sub = subscribeTimeMachine(_render)
+  _sub = subscribeTimeMachine(_scheduleRender)
 }
 
 export function unmountTimeControls() {
@@ -51,6 +61,7 @@ function _isoDate(d) {
 
 function _render() {
   if (!_el) return
+  const savedDate = _el.querySelector('#tc-date-input')?.value
   const { speed, mode, historySize, histIdx, speeds, simDate, minDate } = getTimeMachineState()
 
   const isLive      = mode === 'live'
@@ -112,6 +123,10 @@ function _render() {
   `
 
   _bindEvents()
+  if (savedDate) {
+    const inp = _el.querySelector('#tc-date-input')
+    if (inp) inp.value = savedDate
+  }
 }
 
 function _liveUI(speed, speeds, historySize, dateLabel) {
@@ -242,7 +257,6 @@ function _bindEvents() {
     _render()
     const err = await travelToDate(y, m, d)
     if (err) { _travelError = err; _render() }
-    else _travelOpen = false
   })
 
   // Allow pressing Enter in the date input to trigger Go

@@ -26,6 +26,7 @@ import { mountResults,     unmountResults      } from './pages/results.js'
 import { mountHistory,     unmountHistory      } from './pages/history.js'
 import { mountHelp,        unmountHelp         } from './pages/help.js'
 import { mountLearn,       unmountLearn        } from './pages/learn.js'
+import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMode.js'
 import { mountTimeControls } from './components/timeControls.js'
 import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
@@ -56,6 +57,7 @@ function getRoute() {
   if (hash.startsWith('#history'))       return { name: 'history' }
   if (hash.startsWith('#help'))          return { name: 'help' }
   if (hash.startsWith('#learn'))         return { name: 'learn' }
+  if (hash.startsWith('#simulation'))   return { name: 'simulation' }
   return { name: 'dashboard' }
 }
 
@@ -76,6 +78,7 @@ function unmountCurrent() {
     case 'history':      unmountHistory();      break
     case 'help':         unmountHelp();         break
     case 'learn':        unmountLearn();        break
+    case 'simulation':  unmountSimulationMode(); break
     case 'auth':         unmountAuth();         break
     case 'welcome':      unmountWelcome();      break
   }
@@ -103,6 +106,7 @@ function mount(route) {
     case 'history':      mountHistory(main);                           break
     case 'help':         mountHelp(main);                              break
     case 'learn':        mountLearn(main);                             break
+    case 'simulation':  mountSimulationMode(main);                    break
   }
 }
 

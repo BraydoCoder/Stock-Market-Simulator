@@ -6,7 +6,8 @@
 // Price snapshots are recorded before each tick so the user can scrub
 // backwards through history or jump to any date (past or future).
 
-import { tick, captureSnapshot, restorePrices } from '../api/prices.js'
+import { tick, captureSnapshot, restorePrices, portfolioValue } from '../api/prices.js'
+import { getState } from '../state/store.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,8 @@ export function getDisplayDate() {
   if (_histIdx !== null && history[_histIdx]?.simDate) return history[_histIdx].simDate
   return _simDate
 }
+
+export function getHistory() { return [...history] }
 
 export function subscribeTimeMachine(fn) {
   _listeners.add(fn)
@@ -204,7 +207,9 @@ function _scheduleTick() {
 }
 
 function _pushSnapshot() {
-  history.push({ ts: Date.now(), simDate: new Date(_simDate), prices: captureSnapshot() })
+  const state    = getState()
+  const netWorth = state.user.balance + portfolioValue(state.holdings)
+  history.push({ ts: Date.now(), simDate: new Date(_simDate), prices: captureSnapshot(), netWorth })
   if (history.length > MAX_HISTORY) history.shift()
 }
 

@@ -50,6 +50,7 @@ export function renderNavbar() {
           ${link('#achievements', t('Achievements'))}
           ${link('#leaderboard',  t('Leaderboard'))}
           ${link('#learn',        t('Learn'))}
+          ${link('#simulation',   t('Simulate'))}
         </div>
 
         <!-- Right side -->
