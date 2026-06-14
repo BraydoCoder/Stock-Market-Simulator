@@ -27,7 +27,6 @@ import { mountHistory,     unmountHistory      } from './pages/history.js'
 import { mountHelp,        unmountHelp         } from './pages/help.js'
 import { mountLearn,       unmountLearn        } from './pages/learn.js'
 import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMode.js'
-import { mountTimeControls } from './components/timeControls.js'
 import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
 import { checkAchievements } from './utils/achievements.js'
@@ -209,7 +208,6 @@ function bootApp() {
   startTimeMachine()
 
   initNavbar()
-  mountTimeControls()
 
   subscribe(() => checkAchievements())
 
@@ -251,19 +249,15 @@ async function init() {
 
   if (!supabase) return
 
-  const tcRoot = () => document.getElementById('time-controls-root')
-
   // Sign-out and token-refresh errors go straight to login, not the welcome page.
   function showAuth() {
     if (currentRoute === 'auth') return
     unmountCurrent()
     currentRoute = 'auth'
-    tcRoot()?.classList.add('hidden')
     mountAuth(main)
     window.addEventListener('auth-ready', () => {
       unmountAuth()
       currentRoute = null
-      tcRoot()?.classList.remove('hidden')
       mount(getRoute())
     }, { once: true })
   }
@@ -273,7 +267,6 @@ async function init() {
     if (currentRoute === 'welcome' || currentRoute === 'auth') return
     unmountCurrent()
     currentRoute = 'welcome'
-    tcRoot()?.classList.add('hidden')
     mountWelcome(main, () => {
       unmountWelcome()
       currentRoute = null
