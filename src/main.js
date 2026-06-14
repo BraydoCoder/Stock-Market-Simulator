@@ -276,11 +276,11 @@ async function init() {
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         showAuth()
-      } else if (event === 'SIGNED_IN' && (currentRoute === 'auth' || currentRoute === 'welcome')) {
-        unmountCurrent()
-        currentRoute = null
-        mount(getRoute())
       }
+      // Navigation after sign-in is handled by the auth-ready event dispatched
+      // by the login form. We don't react to SIGNED_IN here because Supabase
+      // can fire it during background token refreshes right after sign-out,
+      // which would incorrectly bounce the user back to the dashboard.
     })
 
     // Quick session check — reads localStorage, near-instant for a valid session.
