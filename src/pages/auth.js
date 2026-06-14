@@ -21,7 +21,7 @@ export function unmountAuth() {
 function render() {
   if (!container) return
   container.innerHTML = `
-    <div class="min-h-screen bg-bg flex items-center justify-center px-4">
+    <div class="fixed inset-0 z-[200] bg-bg overflow-y-auto flex items-center justify-center px-4">
       <div class="w-full max-w-sm">
 
         <!-- Logo -->
@@ -175,7 +175,7 @@ function showError(msg) {
 function showConfirmation() {
   if (!container) return
   container.innerHTML = `
-    <div class="min-h-screen bg-bg flex items-center justify-center px-4">
+    <div class="fixed inset-0 z-[200] bg-bg overflow-y-auto flex items-center justify-center px-4">
       <div class="w-full max-w-sm text-center">
         <h2 class="text-xl font-display font-bold text-text-primary mb-2">Check your email</h2>
         <p class="text-sm text-text-muted mb-6">

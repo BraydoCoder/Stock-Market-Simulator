@@ -248,14 +248,10 @@ async function init() {
     if (currentRoute === 'auth') return
     unmountCurrent()
     currentRoute = 'auth'
-    document.getElementById('navbar').classList.add('hidden')
-    main.classList.remove('pt-14')
     mountAuth(main)
     window.addEventListener('auth-ready', () => {
       unmountAuth()
       currentRoute = null
-      document.getElementById('navbar').classList.remove('hidden')
-      main.classList.add('pt-14')
       mount(getRoute())
     }, { once: true })
   }
@@ -270,8 +266,6 @@ async function init() {
       } else if (event === 'SIGNED_IN' && currentRoute === 'auth') {
         unmountAuth()
         currentRoute = null
-        document.getElementById('navbar').classList.remove('hidden')
-        main.classList.add('pt-14')
         mount(getRoute())
       }
     })
