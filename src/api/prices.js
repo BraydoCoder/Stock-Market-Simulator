@@ -81,18 +81,17 @@ export function getAllPrices() { return store }
 // In real mode: no price movement (Finnhub polling handles that).
 // In simulation mode: applies a small random walk to every stock.
 export function tick() {
-  if (!FINNHUB_API_KEY) {
-    // Simulation: move each stock ±0.2% randomly
-    STOCKS.forEach(s => {
-      const cur = store.get(s.symbol)
-      if (!cur) return
-      const delta   = cur.price * (Math.random() * 0.004 - 0.002)
-      const price   = Math.max(round2(cur.price + delta), 0.01)
-      const chg     = round2(price - s.basePrice)
-      const chgPct  = round2((chg / s.basePrice) * 100)
-      store.set(s.symbol, { price, change: chg, changePct: chgPct, prev: cur.price })
-    })
-  }
+  // Always simulate price movement so the time machine shows changing prices.
+  // In real mode, Finnhub polling overwrites these with actual quotes every 120 s.
+  STOCKS.forEach(s => {
+    const cur = store.get(s.symbol)
+    if (!cur) return
+    const delta   = cur.price * (Math.random() * 0.02 - 0.01)
+    const price   = Math.max(round2(cur.price + delta), 0.01)
+    const chg     = round2(price - s.basePrice)
+    const chgPct  = round2((chg / s.basePrice) * 100)
+    store.set(s.symbol, { price, change: chg, changePct: chgPct, prev: cur.price })
+  })
 
   checkPriceAlerts()
   checkOrdersAndSnapshot()

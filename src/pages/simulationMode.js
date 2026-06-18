@@ -18,13 +18,15 @@ import {
   getHistory,
 } from '../lib/timeMachine.js'
 
-let container    = null
-let _sub         = null
-let _chart       = null
-let _selectedSym = 'AAPL'
-let _travelOpen  = false
-let _travelError = ''
-let _rafPending  = false
+let container        = null
+let _sub             = null
+let _pricesHandler   = null
+let _chart           = null
+let _selectedSym     = 'AAPL'
+let _travelOpen      = false
+let _travelError     = ''
+let _rafPending      = false
+let _liveHistory     = []   // [{date, price}] — built from live store each tick
 
 // ── Mount / unmount ───────────────────────────────────────────────────────────
 
@@ -42,12 +44,16 @@ export function mountSimulationMode(el) {
   container.addEventListener('keydown', _handleKey)
   container.addEventListener('change',  _handleChange)
 
+  _liveHistory = []
   _sub = subscribeTimeMachine(_scheduleUpdate)
+  _pricesHandler = () => _scheduleUpdate()
+  window.addEventListener('prices-updated', _pricesHandler)
 }
 
 export function unmountSimulationMode() {
   _sub?.()
   _sub = null
+  if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
   if (_chart) { _chart.destroy(); _chart = null }
   container = null
 }
@@ -59,6 +65,13 @@ function _scheduleUpdate() {
   _rafPending = true
   requestAnimationFrame(() => {
     _rafPending = false
+    // Record current live price on every tick so the chart shows real movement
+    const p = getPrice(_selectedSym)
+    if (p.price > 0) {
+      const { simDate } = getTimeMachineState()
+      _liveHistory.push({ date: new Date(simDate), price: p.price })
+      if (_liveHistory.length > 300) _liveHistory.shift()
+    }
     _renderControls()
     _updateChart()
     _updateStockPrice()
@@ -378,10 +391,10 @@ function _updatePriceTable() {
     return `
       <div class="flex items-center justify-between px-4 py-1.5 border-l-2
         ${sel
-          ? 'bg-accent-primary/8 border-accent-primary'
+          ? 'bg-accent-primary/10 border-accent-primary'
           : up
-            ? 'bg-gain/8 border-gain/50'
-            : 'bg-loss/8 border-loss/50'}">
+            ? 'bg-gain/15 border-gain'
+            : 'bg-loss/15 border-loss'}">
         <div class="flex items-center gap-2">
           <span class="text-xs font-bold text-text-primary w-12 shrink-0">${s.symbol}</span>
           <span class="text-[10px] text-text-muted truncate max-w-[72px] hidden sm:block">${s.name.split(' ')[0]}</span>
@@ -497,23 +510,14 @@ function _initChart() {
 }
 
 function _updateChart() {
-  if (!_chart) return
-  const hist = getHistory()
-  if (!hist.length) return
+  if (!_chart || !_liveHistory.length) return
 
-  // Extract this stock's price from each snapshot
-  const points = hist
-    .map(h => ({ date: h.simDate, price: h.prices?.[_selectedSym]?.price ?? null }))
-    .filter(p => p.price !== null)
+  const prev = _liveHistory.length >= 2 ? _liveHistory[_liveHistory.length - 2].price : _liveHistory[0].price
+  const last = _liveHistory[_liveHistory.length - 1].price
+  const up   = last >= prev
 
-  if (!points.length) return
-
-  const prev = points.length >= 2 ? points[points.length - 2].price : points[0].price
-  const last = points[points.length - 1].price
-  const up   = last >= prev  // color fill based on most recent tick direction
-
-  _chart.data.labels              = points.map(p => _fmtDate(p.date))
-  _chart.data.datasets[0].data    = points.map(p => p.price)
+  _chart.data.labels              = _liveHistory.map(p => _fmtDate(p.date))
+  _chart.data.datasets[0].data    = _liveHistory.map(p => p.price)
   _chart.data.datasets[0].label   = _selectedSym
   _chart.data.datasets[0].backgroundColor = up ? 'rgba(0,212,170,0.07)' : 'rgba(239,68,68,0.07)'
   _chart.update('none')
@@ -546,6 +550,7 @@ function _handleKey(e) {
 function _handleChange(e) {
   if (e.target.id === 'tw-sym') {
     _selectedSym = e.target.value
+    _liveHistory = []   // clear so chart starts fresh for the new stock
     _updateChart()
     _updateStockPrice()
     _updatePriceTable()
