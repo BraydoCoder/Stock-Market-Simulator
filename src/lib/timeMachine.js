@@ -11,7 +11,7 @@ import { getState } from '../state/store.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SPEEDS       = [1, 5, 25, 100]
+const SPEEDS       = [1, 5, 25]
 const BASE_MS      = 3000      // ms per tick at 1×
 const MAX_HISTORY  = 300       // ~15 min of 1× history (one snapshot per tick)
 const MAX_TRAVEL   = Infinity  // no cap — user can travel to any future date
