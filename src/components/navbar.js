@@ -47,7 +47,7 @@ export function renderNavbar() {
           ${link('#stocks',       t('Stocks'))}
           ${link('#portfolio',    t('Portfolio'))}
           ${link('#history',      t('History'))}
-          ${link('#achievements', t('Achievements'))}
+          ${link('#quests', t('Quests'))}
           ${link('#leaderboard',  t('Leaderboard'))}
           ${link('#learn',        t('Learn'))}
           ${link('#simulation',   t('Time Warp'))}

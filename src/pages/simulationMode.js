@@ -39,6 +39,9 @@ export function mountSimulationMode(el) {
   container.addEventListener('click',   _handleClick)
   container.addEventListener('change',  _handleChange)
   container.addEventListener('keydown', _handleKey)
+  container.addEventListener('input',   _handleInput)
+  container.addEventListener('focusin', _handleFocusIn)
+  document.addEventListener('click',    _handleOutsideClick)
 
   _sub = subscribeTimeMachine(_scheduleUpdate)
   _pricesHandler = () => _scheduleUpdate()
@@ -49,6 +52,7 @@ export function unmountSimulationMode() {
   _sub?.()
   _sub = null
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
+  document.removeEventListener('click', _handleOutsideClick)
   if (_chart) { _chart.destroy(); _chart = null }
   container = null
 }
@@ -134,14 +138,28 @@ function _renderPage() {
 
       <!-- Top controls bar -->
       <div class="bg-surface border border-border rounded-2xl px-5 py-4 flex flex-wrap items-end gap-4">
-        <!-- Stock -->
-        <div class="flex flex-col gap-1">
+        <!-- Stock search -->
+        <div class="flex flex-col gap-1 relative">
           <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">Stock</span>
-          <select id="sim-sym"
-            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
-                   outline-none focus:border-accent-primary transition-colors cursor-pointer min-w-[200px]">
-            ${symOptions}
-          </select>
+          <div class="relative">
+            <input id="sim-sym-search" type="text" autocomplete="off"
+              value="${_selectedSym} — ${STOCKS.find(s => s.symbol === _selectedSym)?.name ?? ''}"
+              placeholder="Search symbol or name…"
+              class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
+                     outline-none focus:border-accent-primary transition-colors cursor-pointer min-w-[220px] pr-8" />
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none">▾</span>
+          </div>
+          <div id="sim-sym-dropdown"
+            class="hidden absolute top-full left-0 mt-1 z-50 bg-surface border border-border rounded-xl
+                   shadow-xl overflow-y-auto max-h-56 min-w-[220px]">
+            ${STOCKS.map(s => `
+              <button data-sym="${s.symbol}" class="sym-opt w-full text-left px-3 py-2 text-sm hover:bg-surface-elevated
+                flex items-center gap-2 transition-colors ${s.symbol === _selectedSym ? 'text-accent-primary font-semibold' : 'text-text-primary'}">
+                <span class="font-mono font-bold w-14 shrink-0">${s.symbol}</span>
+                <span class="text-text-muted text-xs truncate">${s.name}</span>
+              </button>
+            `).join('')}
+          </div>
         </div>
 
         <!-- Start date (read-only — shows when history started) -->
@@ -370,6 +388,13 @@ function _updateCharts() {
 // ── Event delegation ──────────────────────────────────────────────────────────
 
 function _handleClick(e) {
+  // Stock option in dropdown
+  const opt = e.target.closest('.sym-opt')
+  if (opt) {
+    _selectSym(opt.dataset.sym)
+    return
+  }
+  // Action buttons
   const btn = e.target.closest('[data-action]')
   if (!btn || btn.disabled) return
   const { action, speed } = btn.dataset
@@ -385,15 +410,57 @@ function _handleClick(e) {
 
 function _handleKey(e) {
   if (e.key === 'Enter' && e.target.id === 'sim-end-date') _doTravel()
+  if (e.key === 'Escape' && e.target.id === 'sim-sym-search') _closeDropdown()
 }
 
-function _handleChange(e) {
-  if (e.target.id === 'sim-sym') {
-    _selectedSym = e.target.value
-    _liveHistory = []
-    _renderHeader()
-    _updateCharts()
+function _handleChange(e) { /* select removed — handled by _handleInput */ }
+
+function _handleInput(e) {
+  if (e.target.id !== 'sim-sym-search') return
+  const q   = e.target.value.toLowerCase()
+  const dd  = document.getElementById('sim-sym-dropdown')
+  if (!dd) return
+  dd.classList.remove('hidden')
+  dd.querySelectorAll('.sym-opt').forEach(btn => {
+    const sym  = btn.dataset.sym.toLowerCase()
+    const name = btn.querySelector('.text-text-muted')?.textContent.toLowerCase() ?? ''
+    btn.classList.toggle('hidden', !(sym.includes(q) || name.includes(q)))
+  })
+}
+
+function _handleFocusIn(e) {
+  if (e.target.id === 'sim-sym-search') {
+    const dd = document.getElementById('sim-sym-dropdown')
+    dd?.classList.remove('hidden')
+    e.target.select()
   }
+}
+
+function _handleOutsideClick(e) {
+  if (!container) return
+  const search = document.getElementById('sim-sym-search')
+  const dd     = document.getElementById('sim-sym-dropdown')
+  if (search && !search.contains(e.target) && dd && !dd.contains(e.target)) {
+    _closeDropdown()
+  }
+}
+
+function _closeDropdown() {
+  const dd = document.getElementById('sim-sym-dropdown')
+  dd?.classList.add('hidden')
+  const search = document.getElementById('sim-sym-search')
+  if (search) {
+    const stock = STOCKS.find(s => s.symbol === _selectedSym)
+    search.value = `${_selectedSym} — ${stock?.name ?? ''}`
+  }
+}
+
+function _selectSym(sym) {
+  _selectedSym = sym
+  _liveHistory = []
+  _closeDropdown()
+  _renderHeader()
+  _updateCharts()
 }
 
 // ── Travel ────────────────────────────────────────────────────────────────────

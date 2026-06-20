@@ -16,6 +16,7 @@ import { mountStockBrowser, unmountStockBrowser } from './pages/stockBrowser.js'
 import { mountPortfolio,    unmountPortfolio    } from './pages/portfolio.js'
 import { mountStockDetail,  unmountStockDetail  } from './pages/stockDetail.js'
 import { mountAchievements, unmountAchievements } from './pages/achievements.js'
+import { mountQuests,       unmountQuests       } from './pages/quests.js'
 import { mountSettings,     unmountSettings     } from './pages/settings.js'
 import { mountProfile,      unmountProfile      } from './pages/profile.js'
 import { mountAuth,         unmountAuth         } from './pages/auth.js'
@@ -48,6 +49,7 @@ function getRoute() {
   if (hash.startsWith('#stocks'))        return { name: 'stocks' }
   if (hash.startsWith('#portfolio'))     return { name: 'portfolio' }
   if (hash.startsWith('#achievements'))  return { name: 'achievements' }
+  if (hash.startsWith('#quests'))        return { name: 'quests' }
   if (hash.startsWith('#leaderboard-project')) return { name: 'leaderboard-project' }
   if (hash.startsWith('#leaderboard'))   return { name: 'leaderboard' }
   if (hash.startsWith('#teacher'))       return { name: 'teacher' }
@@ -69,6 +71,7 @@ function unmountCurrent() {
     case 'portfolio':    unmountPortfolio();    break
     case 'stock-detail': unmountStockDetail();  break
     case 'achievements': unmountAchievements(); break
+    case 'quests':       unmountQuests();       break
     case 'settings':     unmountSettings();     break
     case 'profile':      unmountProfile();      break
     case 'leaderboard':          unmountLeaderboard();  break
@@ -97,6 +100,7 @@ function mount(route) {
     case 'portfolio':    mountPortfolio(main);                         break
     case 'stock-detail': mountStockDetail(main, route.symbol);         break
     case 'achievements': mountAchievements(main, subscribe);           break
+    case 'quests':       mountQuests(main, subscribe);                 break
     case 'settings':     mountSettings(main);                          break
     case 'profile':      mountProfile(main);                           break
     case 'leaderboard':          mountLeaderboard(main, false); break
