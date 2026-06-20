@@ -182,7 +182,7 @@ function cardView(stocks, holdings) {
             data-symbol="${s.symbol}">
             <div class="flex items-start justify-between mb-3">
               <div class="flex items-center gap-2.5">
-                ${logoImg(s, 'w-8 h-8')}
+                ${logoImg(s, 'w-10 h-10')}
                 <div>
                   <div class="font-mono font-bold text-base text-text-primary group-hover:text-accent-primary leading-none">${s.symbol}</div>
                   <div class="text-[10px] text-text-muted mt-0.5">${s.sector}</div>
@@ -219,11 +219,18 @@ function th(key, label, cls) {
   return `<th class="${cls} cursor-pointer hover:text-text-primary select-none" data-sort="${key}">${label}${arrow}</th>`
 }
 
-function logoImg(s, size = 'w-6 h-6') {
-  if (!s.domain) return `<div class="${size} rounded bg-surface-elevated flex items-center justify-center text-[8px] font-bold text-text-muted">${s.symbol[0]}</div>`
-  return `<img src="https://logo.clearbit.com/${s.domain}" alt=""
-    class="${size} rounded object-contain bg-surface-elevated"
-    onerror="this.outerHTML='<div class=\\'${size} rounded bg-surface-elevated flex items-center justify-center text-[8px] font-bold text-text-muted\\'>${s.symbol[0]}</div>'" />`
+function logoImg(s, cls = 'w-10 h-10') {
+  const initials = s.symbol.slice(0, 2)
+  const fallback = `<div class="${cls} rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0">${initials}</div>`
+  if (!s.domain) return fallback
+  return `<img
+    src="https://logo.clearbit.com/${s.domain}?size=128"
+    alt="${s.symbol}"
+    class="${cls} rounded-xl object-contain bg-white p-1 border border-border shrink-0"
+    onerror="this.replaceWith(Object.assign(document.createElement('div'), {
+      className: '${cls} rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0',
+      textContent: '${initials}'
+    }))" />`
 }
 
 function stockRow(s, holdings) {
@@ -236,7 +243,7 @@ function stockRow(s, holdings) {
     <tr class="hover:bg-surface-elevated/50 transition-colors cursor-pointer" data-nav-stock="${s.symbol}">
       <td class="px-5 py-3.5">
         <div class="flex items-center gap-2">
-          ${logoImg(s, 'w-6 h-6')}
+          ${logoImg(s, 'w-10 h-10')}
           <div>
             <div class="font-mono font-bold text-text-primary group-hover:text-accent-primary">${s.symbol}</div>
             ${owned ? `<div class="text-[10px] text-accent-secondary">Owned: ${owned.shares % 1 === 0 ? owned.shares : owned.shares.toFixed(4)}</div>` : ''}
