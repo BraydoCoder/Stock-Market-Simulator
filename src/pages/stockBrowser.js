@@ -8,6 +8,23 @@ import { FINNHUB_API_KEY } from '../config.js'
 
 const PAGE_SIZE = 50
 
+const SECTOR_COLORS = {
+  'Technology':    'bg-blue-500/15 border-blue-500/40 text-blue-400',
+  'Healthcare':    'bg-green-500/15 border-green-500/40 text-green-400',
+  'Finance':       'bg-yellow-500/15 border-yellow-500/40 text-yellow-400',
+  'Consumer':      'bg-orange-500/15 border-orange-500/40 text-orange-400',
+  'Energy':        'bg-red-500/15 border-red-500/40 text-red-400',
+  'Industrials':   'bg-gray-400/15 border-gray-400/40 text-gray-300',
+  'Crypto':        'bg-purple-500/15 border-purple-500/40 text-purple-400',
+  'Utilities':     'bg-cyan-500/15 border-cyan-500/40 text-cyan-400',
+  'Real Estate':   'bg-pink-500/15 border-pink-500/40 text-pink-400',
+  'Communication': 'bg-indigo-500/15 border-indigo-500/40 text-indigo-400',
+}
+function sectorBadge(sector) {
+  const cls = SECTOR_COLORS[sector] ?? 'bg-surface-elevated border-border text-text-muted'
+  return `<span class="text-[10px] font-medium px-2 py-0.5 rounded-full border ${cls}">${sector}</span>`
+}
+
 let filterSector = 'All'
 let searchQuery = ''
 let sortKey = 'symbol'
@@ -185,7 +202,7 @@ function cardView(stocks, holdings) {
                 ${logoImg(s, 'w-10 h-10')}
                 <div>
                   <div class="font-mono font-bold text-base text-text-primary group-hover:text-accent-primary leading-none">${s.symbol}</div>
-                  <div class="text-[10px] text-text-muted mt-0.5">${s.sector}</div>
+                  <div class="mt-1">${sectorBadge(s.sector)}</div>
                 </div>
               </div>
               ${owned ? `<div class="text-[9px] text-accent-secondary font-bold bg-accent-secondary/10 px-1.5 py-0.5 rounded">Owned</div>` : ''}
@@ -255,7 +272,7 @@ function stockRow(s, holdings) {
         <div class="text-text-secondary text-xs mt-0.5">${s.name}</div>
       </td>
       <td class="px-3 py-3.5 hidden md:table-cell">
-        <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
+        ${sectorBadge(s.sector)}
       </td>
       <td class="px-3 py-3.5 hidden lg:table-cell">
         ${s.risk ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${riskClass}">${s.risk}</span>` : '—'}
