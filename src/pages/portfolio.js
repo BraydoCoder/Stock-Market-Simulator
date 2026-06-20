@@ -553,7 +553,7 @@ function bindEvents() {
     btn.addEventListener('click', () => { cancelOrder(btn.dataset.cancelOrder); render() })
   })
   container.querySelector('#reset-portfolio-btn')?.addEventListener('click', () => {
-    if (confirm('Reset your portfolio to PC$10,000? This cannot be undone.')) {
+    if (confirm('Reset your portfolio to PC$50,000? This cannot be undone.')) {
       resetPortfolio()
     }
   })

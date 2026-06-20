@@ -995,7 +995,7 @@ function bindEvents() {
   container.querySelector('#replay-tutorial-btn')?.addEventListener('click', startTutorial)
 
   container.querySelector('#reset-btn')?.addEventListener('click', () => {
-    if (confirm('Reset your portfolio to PC$10,000? All holdings and transactions will be deleted. This cannot be undone.')) {
+    if (confirm('Reset your portfolio to PC$50,000? All holdings and transactions will be deleted. This cannot be undone.')) {
       resetPortfolio()
       toast('Portfolio reset!', 'info')
     }

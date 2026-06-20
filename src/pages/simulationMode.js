@@ -24,6 +24,7 @@ let _selectedSym   = 'AAPL'
 let _rafPending    = false
 let _liveHistory   = []   // [{label, price}]
 let _travelError   = ''
+let _aiPanelOpen   = false
 
 // ── Mount / unmount ───────────────────────────────────────────────────────────
 
@@ -163,13 +164,12 @@ function _renderPage() {
           </div>
         </div>
 
-        <!-- Start date (read-only — shows when history started) -->
+        <!-- Start date (editable) -->
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">Start Date</span>
-          <div id="sim-start-date"
-            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary min-w-[140px]">
-            &mdash;
-          </div>
+          <input id="sim-start-date" type="date"
+            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
+                   outline-none focus:border-accent-primary transition-colors cursor-pointer min-w-[160px]" />
         </div>
 
         <!-- End date / travel target -->
@@ -209,13 +209,23 @@ function _renderPage() {
         <div style="position:relative;height:340px;">
           <canvas id="sim-chart"></canvas>
         </div>
+
+        <!-- AI Prediction button row -->
+        <div class="px-5 py-3 border-t border-border flex items-center justify-between">
+          <span class="text-xs text-text-muted">Get a simulated AI forecast for the next price move</span>
+          <button data-action="toggle-ai"
+            class="px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors
+              ${_aiPanelOpen ? 'bg-accent-primary text-bg border-accent-primary' : 'bg-surface-elevated border-border text-accent-primary hover:bg-accent-primary/10'}">
+            ${_aiPanelOpen ? 'Hide Prediction' : 'Get AI Prediction'}
+          </button>
+        </div>
       </div>
 
       <!-- Travel error -->
       <div id="sim-travel-error" class="hidden text-loss text-sm px-1"></div>
 
-      <!-- AI Prediction panel -->
-      <div id="sim-ai-panel" class="bg-surface border border-border rounded-2xl overflow-hidden">
+      <!-- AI Prediction panel (hidden by default) -->
+      <div id="sim-ai-panel" class="${_aiPanelOpen ? '' : 'hidden'} bg-surface border border-border rounded-2xl overflow-hidden">
         <!-- populated by _renderAIPrediction() -->
       </div>
 
@@ -276,9 +286,10 @@ function _renderControls() {
   const isLive   = mode === 'live'
   const isPaused = mode === 'paused' || mode === 'rewinding'
 
-  // Start date label
-  if (startEl) {
-    startEl.textContent = minDate ? _fmtDate(minDate) : _fmtDate(simDate)
+  // Start date input
+  const startInput = document.getElementById('sim-start-date')
+  if (startInput && !startInput.value) {
+    startInput.value = _isoDate(minDate ?? simDate)
   }
 
   // End date default (one year from simDate)
@@ -412,11 +423,13 @@ function _handleClick(e) {
     case 'step-back':  stepBack();              break
     case 'step-fwd':   stepForward();           break
     case 'travel-go':  _doTravel();             break
+    case 'toggle-ai':  _toggleAI();             break
   }
 }
 
 function _handleKey(e) {
-  if (e.key === 'Enter' && e.target.id === 'sim-end-date') _doTravel()
+  if (e.key === 'Enter' && e.target.id === 'sim-end-date')   _doTravel()
+  if (e.key === 'Enter' && e.target.id === 'sim-start-date') _doTravel()
   if (e.key === 'Escape' && e.target.id === 'sim-sym-search') _closeDropdown()
 }
 
@@ -468,6 +481,23 @@ function _selectSym(sym) {
   _closeDropdown()
   _renderHeader()
   _updateCharts()
+}
+
+function _toggleAI() {
+  _aiPanelOpen = !_aiPanelOpen
+  const panel = document.getElementById('sim-ai-panel')
+  const btn   = document.querySelector('[data-action="toggle-ai"]')
+  if (panel) panel.classList.toggle('hidden', !_aiPanelOpen)
+  if (btn) {
+    btn.textContent = _aiPanelOpen ? 'Hide Prediction' : 'Get AI Prediction'
+    btn.classList.toggle('bg-accent-primary', _aiPanelOpen)
+    btn.classList.toggle('text-bg', _aiPanelOpen)
+    btn.classList.toggle('border-accent-primary', _aiPanelOpen)
+    btn.classList.toggle('bg-surface-elevated', !_aiPanelOpen)
+    btn.classList.toggle('text-accent-primary', !_aiPanelOpen)
+    btn.classList.toggle('border-border', !_aiPanelOpen)
+  }
+  if (_aiPanelOpen) _renderAIPrediction()
 }
 
 // ── AI Prediction ─────────────────────────────────────────────────────────────
@@ -576,6 +606,7 @@ function _computeAI(sym, history) {
 }
 
 function _renderAIPrediction() {
+  if (!_aiPanelOpen) return
   const el = document.getElementById('sim-ai-panel')
   if (!el) return
   const ai = _computeAI(_selectedSym, _liveHistory)
