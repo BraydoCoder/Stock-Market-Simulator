@@ -70,7 +70,7 @@ function _scheduleUpdate() {
     if (p.price > 0) {
       const { simDate } = getTimeMachineState()
       _liveHistory.push({ date: new Date(simDate), price: p.price })
-      if (_liveHistory.length > 300) _liveHistory.shift()
+      if (_liveHistory.length > 80) _liveHistory.shift()
     }
     _renderControls()
     _updateChart()
@@ -233,8 +233,8 @@ function _renderControls() {
               data-action="speed" data-speed="${s}"
               class="w-9 py-1 rounded-lg border text-center transition-colors
                 ${active
-                  ? 'bg-accent-primary text-bg border-accent-primary font-bold cursor-pointer'
-                  : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated cursor-pointer'}">
+                  ? 'bg-accent-primary text-bg border-accent-primary font-bold'
+                  : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated hover:border-accent-primary/50 cursor-pointer'}">
               ${s}&times;
             </button>`
           }).join('')}

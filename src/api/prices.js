@@ -87,9 +87,9 @@ export function tick() {
     const cur = store.get(s.symbol)
     if (!cur) return
     const r         = Math.random()
-    const magnitude = r < 0.05 ? 0.07        // 5 %: sharp spike
-                    : r < 0.20 ? 0.03        // 15%: medium jump
-                    :            0.008        // 80%: quiet tick
+    const magnitude = r < 0.10 ? 0.18        // 10%: sharp spike ±18%
+                    : r < 0.30 ? 0.07        // 20%: medium jump ±7%
+                    :            0.015        // 70%: quiet tick ±1.5%
     const delta   = cur.price * (Math.random() * magnitude * 2 - magnitude)
     const price   = Math.max(round2(cur.price + delta), 0.01)
     const chg     = round2(price - s.basePrice)
