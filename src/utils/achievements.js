@@ -5,6 +5,7 @@
 import { getState, unlockBadge, hasBadge, awardXP } from '../state/store.js'
 import { getAllPrices, portfolioValue } from '../api/prices.js'
 import { toast } from '../components/toast.js'
+import { STARTING_BALANCE } from '../config.js'
 
 export const BADGES = [
   // ── Standard ────────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ export const BADGES = [
     xp: 100,
     check: (s, prices) => {
       const total = s.user.balance + portfolioValue(s.holdings)
-      return (total - 10000) / 10000 >= 0.05
+      return (total - STARTING_BALANCE) / STARTING_BALANCE >= 0.05
     },
   },
   {
@@ -75,7 +76,7 @@ export const BADGES = [
     xp: 200,
     check: (s, prices) => {
       const total = s.user.balance + portfolioValue(s.holdings)
-      return (total - 10000) / 10000 >= 0.10
+      return (total - STARTING_BALANCE) / STARTING_BALANCE >= 0.10
     },
   },
   {
@@ -86,7 +87,7 @@ export const BADGES = [
     xp: 500,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
-      return (total - 10000) / 10000 >= 0.25
+      return (total - STARTING_BALANCE) / STARTING_BALANCE >= 0.25
     },
   },
   {
@@ -97,7 +98,7 @@ export const BADGES = [
     xp: 1000,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
-      return (total - 10000) / 10000 >= 0.50
+      return (total - STARTING_BALANCE) / STARTING_BALANCE >= 0.50
     },
   },
   {
@@ -108,7 +109,7 @@ export const BADGES = [
     xp: 2500,
     check: (s) => {
       const total = s.user.balance + portfolioValue(s.holdings)
-      return (total - 10000) / 10000 >= 1.0
+      return (total - STARTING_BALANCE) / STARTING_BALANCE >= 1.0
     },
   },
   {

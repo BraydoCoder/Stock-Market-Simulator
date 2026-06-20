@@ -7,7 +7,7 @@ const STEPS = [
   {
     target: '#nav-balance',
     title: 'Your Starting Balance',
-    desc: 'You start with PC$10,000 in PilotCoins. This is your virtual currency — use it to buy stocks and grow your portfolio.',
+    desc: 'You start with PC$50,000 in PilotCoins. This is your virtual currency — use it to buy stocks and grow your portfolio.',
   },
   {
     target: '#nav-xp-bar',

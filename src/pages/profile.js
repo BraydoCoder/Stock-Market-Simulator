@@ -3,6 +3,7 @@ import { getState, xpProgress, subscribe } from '../state/store.js'
 import { portfolioValue } from '../api/prices.js'
 import { BADGES } from '../utils/achievements.js'
 import { pc, pct, relativeTime } from '../utils/format.js'
+import { STARTING_BALANCE } from '../config.js'
 
 const LEVEL_TITLES = [
   '', 'Rookie Pilot', 'Market Watcher', 'Trade Starter', 'Chart Reader',
@@ -34,7 +35,7 @@ function render() {
   const { pct: xpPct, hi } = xpProgress()
   const portVal = portfolioValue(state.holdings)
   const totalVal = state.user.balance + portVal
-  const gainPct = ((totalVal - 10000) / 10000) * 100
+  const gainPct = ((totalVal - STARTING_BALANCE) / STARTING_BALANCE) * 100
 
   const unlocked = BADGES.filter(b => state.achievements.includes(b.id))
   const recentBadges = unlocked.slice(-4).reverse()

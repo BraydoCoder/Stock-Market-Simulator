@@ -888,7 +888,7 @@ function render() {
         <div class="flex items-center justify-between">
           <div>
             <div class="text-sm font-medium text-text-primary">Reset Portfolio</div>
-            <div class="text-xs text-text-muted">Wipes all holdings and transactions. Restores PC$10,000.</div>
+            <div class="text-xs text-text-muted">Wipes all holdings, transactions, XP, and achievements. Restores PC$50,000.</div>
           </div>
           <button id="reset-btn" class="px-4 py-2 rounded-lg border border-loss/40 text-loss text-sm hover:bg-loss/10 transition-colors">
             Reset

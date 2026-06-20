@@ -7,7 +7,7 @@ export function mountHelp(el) {
 
       ${section('Getting Started', [
         q('What is StockPilot?',
-          'StockPilot is a gamified stock market simulator. You start with PC$10,000 (PilotCoins) and trade real-company stocks using live or simulated prices. Your goal is to grow your portfolio and climb the class leaderboard.'),
+          'StockPilot is a gamified stock market simulator. You start with PC$50,000 (PilotCoins) and trade real-company stocks using live or simulated prices. Your goal is to grow your portfolio and climb the class leaderboard.'),
         q('How do I join my class?',
           'Ask your teacher for the 6-digit join code. On the Dashboard, enter it in the "Join a Class" box and click Join.'),
         q('What are PilotCoins (PC$)?',
@@ -62,7 +62,7 @@ export function mountHelp(el) {
         q('How do I change my password?',
           'Go to Settings > Profile and click "Change Password". Enter your new password and confirm.'),
         q('What does "Reset Portfolio" do?',
-          'Reset Portfolio wipes all your holdings and transaction history and restores your balance to PC$10,000. This cannot be undone.'),
+          'Reset Portfolio wipes all your holdings, transactions, XP, and achievements, and restores your balance to PC$50,000. This cannot be undone.'),
         q('How do I switch between dark and light mode?',
           'Go to Settings > Appearance and click Light or Dark.'),
       ])}

@@ -33,7 +33,7 @@ function render(onStart, onGuest) {
           </h1>
           <p class="text-base sm:text-lg text-text-muted max-w-lg mb-12 leading-relaxed">
             Build a virtual portfolio, compete with your class on the leaderboard,
-            and learn real investing skills — all with PC$10,000 of play money.
+            and learn real investing skills — all with PC$50,000 of play money.
           </p>
 
           <!-- CTA buttons -->

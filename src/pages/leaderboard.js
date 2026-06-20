@@ -7,6 +7,7 @@ import { getUser } from '../utils/auth.js'
 import { pc, gainClass } from '../utils/format.js'
 import { getState } from '../state/store.js'
 import { portfolioValue } from '../api/prices.js'
+import { STARTING_BALANCE } from '../config.js'
 
 let container      = null
 let channel        = null
@@ -218,7 +219,7 @@ function renderNoSupabase() {
     .sort((a, b) => b.value - a.value)
     .map((p, i) => ({ ...p, rank: i + 1 }))
 
-  const START = 10000
+  const START = STARTING_BALANCE
   const top3  = all.slice(0, 3)
   const rankColors = ['text-yellow-400', 'text-slate-300', 'text-amber-600']
   const rankLabels = ['1st', '2nd', '3rd']
@@ -336,7 +337,7 @@ function renderError(msg) {
 function render() {
   if (!container) return
 
-  const startingBalance = session?.starting_balance ?? 10000
+  const startingBalance = session?.starting_balance ?? STARTING_BALANCE
   const statusColor = session?.status === 'active' ? 'text-gain' : 'text-warning'
   const statusDot   = session?.status === 'active' ? 'bg-gain animate-pulse' : 'bg-warning'
 

@@ -4,6 +4,7 @@ import { getAllPrices, portfolioValue } from '../api/prices.js'
 import { getStock } from '../data/stocks.js'
 import { pc, pct, gainClass, relativeTime } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
+import { STARTING_BALANCE } from '../config.js'
 import Chart from 'chart.js/auto'
 
 let container = null
@@ -45,8 +46,8 @@ function render() {
   const prices = getAllPrices()
   const portVal = portfolioValue(state.holdings)
   const totalVal = state.user.balance + portVal
-  const totalGain = totalVal - 10000
-  const gainPct = (totalGain / 10000) * 100
+  const totalGain = totalVal - STARTING_BALANCE
+  const gainPct = (totalGain / STARTING_BALANCE) * 100
 
   const holdings = Object.entries(state.holdings)
     .map(([sym, h]) => {
@@ -490,7 +491,7 @@ function buildNetWorth(history) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   })
   const data    = history.map(h => h.value)
-  const isUp    = (data.at(-1) ?? 0) >= 10000
+  const isUp    = (data.at(-1) ?? 0) >= STARTING_BALANCE
   const color   = isUp ? '#10B981' : '#EF4444'
 
   netWorthChart = new Chart(canvas, {
@@ -510,7 +511,7 @@ function buildNetWorth(history) {
         },
         {
           label: 'Starting Balance',
-          data: Array(data.length).fill(10000),
+          data: Array(data.length).fill(STARTING_BALANCE),
           borderColor: '#374151',
           borderWidth: 1,
           borderDash: [4, 4],

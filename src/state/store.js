@@ -229,11 +229,17 @@ export function isWatchlisted(symbol) {
 // ── Reset ─────────────────────────────────────────────────────────────────────
 
 export function resetPortfolio() {
-  state.user.balance   = STARTING_BALANCE
-  state.holdings       = {}
-  state.transactions   = []
-  state.orders         = []
+  state.user.balance    = STARTING_BALANCE
+  state.user.xp         = 0
+  state.user.level      = 1
+  state.holdings        = {}
+  state.transactions    = []
+  state.orders          = []
   state.netWorthHistory = []
+  state.achievements    = []
+  state.notifications   = []
+  state.priceAlerts     = []
+  state.watchlist       = []
   save(); emit()
 }
 
