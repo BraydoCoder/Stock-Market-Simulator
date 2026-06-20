@@ -21,7 +21,7 @@ let currentUid     = null
 let session        = null
 let projectable    = false
 
-const REACTION_EMOJIS = ['👍', '🚀', '😮', '😬', '🔥']
+const REACTION_EMOJIS = ['+1', 'Up', 'Wow', 'Hmm', 'Hot']
 
 const LEVEL_TITLES = [
   '', 'Rookie Pilot', 'Market Watcher', 'Trade Starter', 'Chart Reader',

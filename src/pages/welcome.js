@@ -49,9 +49,9 @@ function render(onStart) {
 
           <!-- Feature cards -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-20 max-w-2xl w-full text-left">
-            ${card('📈', 'Live Market Simulation', 'Prices move in real time. Buy low, sell high, and watch your portfolio grow.')}
-            ${card('🏆', 'Compete & Earn XP', 'Climb the class leaderboard, unlock achievements, and level up your rank.')}
-            ${card('📚', 'Learn While You Play', 'Guided lessons on diversification, risk management, and compound interest.')}
+            ${card('SIM', 'Live Market Simulation', 'Prices move in real time. Buy low, sell high, and watch your portfolio grow.')}
+            ${card('XP', 'Compete & Earn XP', 'Climb the class leaderboard, unlock achievements, and level up your rank.')}
+            ${card('EDU', 'Learn While You Play', 'Guided lessons on diversification, risk management, and compound interest.')}
           </div>
 
         </div>

@@ -144,7 +144,7 @@ function render() {
                       ${isWatchlisted(currentSymbol)
                         ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
                         : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'}">
-                      ${isWatchlisted(currentSymbol) ? '★ Watching' : '☆ Watch'}
+                      ${isWatchlisted(currentSymbol) ? 'Watching' : 'Watch'}
                     </button>
                     <button id="more-info-btn"
                       class="shrink-0 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
@@ -337,7 +337,7 @@ function render() {
     const btn = container.querySelector('#watchlist-btn')
     if (!btn) return
     const on = isWatchlisted(currentSymbol)
-    btn.textContent = on ? '★ Watching' : '☆ Watch'
+    btn.textContent = on ? 'Watching' : 'Watch'
     btn.className = `shrink-0 mt-0.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
       on
         ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'

@@ -72,9 +72,9 @@ Market cap reflects what the <em>market</em> currently thinks a company is worth
   {
     slug: 'bull-and-bear', title: 'Bull & Bear Markets', category: 'Basics', mins: 3,
     body: `You'll often hear financial news describe markets as "bull" or "bear." These terms describe the overall direction of the market over an extended period.<br><br>
-<strong>Bull Market 🐂</strong><br>
+<strong>Bull Market</strong><br>
 A period of rising stock prices — typically defined as a 20%+ rise from a recent low, lasting at least 2 months. Bull markets are associated with economic growth, low unemployment, rising corporate profits, and investor optimism. The longest U.S. bull market ran from 2009 to 2020 — over 11 years.<br><br>
-<strong>Bear Market 🐻</strong><br>
+<strong>Bear Market</strong><br>
 A period of declining stock prices — typically a 20%+ drop from a recent high. Bear markets are associated with economic slowdowns, recessions, rising unemployment, and investor fear. They're painful but normal — the average bear market lasts about 9–14 months.<br><br>
 <strong>Market corrections</strong><br>
 A correction is a drop of 10–19.9% from a recent high. Corrections happen roughly every 1–2 years and are actually healthy — they prevent markets from becoming dangerously overvalued. Unlike bear markets, corrections are often short-lived.<br><br>
@@ -169,11 +169,11 @@ If you contribute to a 401(k) every paycheck, you're already practicing DCA with
   {
     slug: 'value-vs-growth', title: 'Value vs. Growth Investing', category: 'Strategy', mins: 4,
     body: `Two major investing philosophies are <strong>value investing</strong> and <strong>growth investing</strong>. Understanding both helps you find your own style.<br><br>
-<strong>Value Investing 🔍</strong><br>
+<strong>Value Investing</strong><br>
 Value investors hunt for stocks trading <em>below</em> what they believe the company is truly worth — looking for bargains. The theory: markets sometimes misprices companies due to short-term fears, and patient investors profit when the market corrects.<br>
 Focus: low P/E ratio, low price-to-book ratio, strong cash flow, reliable dividends. Prefer stable, boring businesses.<br>
 Famous practitioners: Warren Buffett, Benjamin Graham, Charlie Munger.<br><br>
-<strong>Growth Investing 🚀</strong><br>
+<strong>Growth Investing</strong><br>
 Growth investors focus on companies expected to grow much faster than average — even if the stock looks "expensive" by traditional metrics. They're betting on the future, not the present.<br>
 Growth stocks often have high P/E ratios (or no profits at all yet), and rarely pay dividends.<br>
 Famous practitioners: Cathie Wood, Peter Lynch. Classic examples: Amazon, Netflix, Tesla in their early public years.<br><br>
@@ -192,9 +192,9 @@ Historically, value investing has outperformed growth over very long periods, bu
 A market index tracks a list of stocks chosen to represent a market. The S&P 500 tracks the 500 largest U.S. companies. The Dow Jones (DJIA) tracks 30 large companies. NASDAQ Composite tracks all stocks on NASDAQ.<br><br>
 <strong>Index Funds</strong><br>
 An index fund buys all (or most) stocks in an index. Instead of a manager picking stocks, it simply mirrors the index:<br>
-✓ Very low fees (expense ratios of 0.03%–0.20% vs. 1%–2% for active funds)<br>
-✓ Instant diversification<br>
-✓ Performance that consistently matches the market<br><br>
+- Very low fees (expense ratios of 0.03%–0.20% vs. 1%–2% for active funds)<br>
+- Instant diversification<br>
+- Performance that consistently matches the market<br><br>
 <strong>ETFs (Exchange-Traded Funds)</strong><br>
 ETFs are like index funds but trade on exchanges like individual stocks — you can buy and sell throughout the day. Popular ETFs: <strong>SPY</strong> (S&P 500), <strong>QQQ</strong> (NASDAQ 100), <strong>VTI</strong> (total U.S. market).<br><br>
 <strong>The power of low fees</strong><br>
@@ -676,7 +676,7 @@ function renderList() {
               <span class="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-gain/10 border-gain/30 text-gain">Quiz</span>
               <span class="text-[10px] text-text-muted">${QUIZ.length} questions</span>
             </div>
-            <h3 class="font-semibold text-text-primary mb-1 group-hover:text-gain transition-colors">Test Your Knowledge 🎯</h3>
+            <h3 class="font-semibold text-text-primary mb-1 group-hover:text-gain transition-colors">Test Your Knowledge </h3>
             <p class="text-[11px] text-text-muted">Multi-choice quiz covering all topics. See how much you've learned!</p>
           </button>
         ` : ''}
@@ -794,7 +794,7 @@ function renderQuiz() {
           ← Back to Learn
         </button>
         <div class="bg-surface border border-border rounded-2xl p-8 text-center space-y-4">
-          <div class="text-5xl mb-2">${pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '📖' : '💪'}</div>
+          <div class="text-5xl mb-2">${''}</div>
           <h1 class="text-2xl font-display font-bold text-text-primary">${grade}</h1>
           ${lesson ? `<p class="text-xs text-text-muted uppercase tracking-wide font-medium">${lesson.title}</p>` : ''}
           <p class="text-text-muted text-sm">You scored</p>
@@ -888,7 +888,7 @@ function renderQuiz() {
               : quizAnswered && i === quizSelected && i !== q.correct
               ? 'border-loss bg-loss/20 text-loss'
               : 'border-current bg-surface text-text-muted'
-            const label = quizAnswered && i === q.correct ? '✓' : quizAnswered && i === quizSelected && i !== q.correct ? '✗' : String.fromCharCode(65 + i)
+            const label = quizAnswered && i === q.correct ? '>' : quizAnswered && i === quizSelected && i !== q.correct ? '✗' : String.fromCharCode(65 + i)
             return `
               <button data-choice="${i}" ${quizAnswered ? 'disabled' : ''}
                 class="quiz-choice w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${cls}">
@@ -905,13 +905,13 @@ function renderQuiz() {
         ${quizAnswered ? `
           <div class="rounded-xl border px-4 py-3 ${quizSelected === q.correct ? 'border-gain/30 bg-gain/5' : 'border-loss/30 bg-loss/5'}">
             <div class="text-xs font-bold mb-1 ${quizSelected === q.correct ? 'text-gain' : 'text-loss'}">
-              ${quizSelected === q.correct ? '✓ Correct!' : '✗ Not quite —'}
+              ${quizSelected === q.correct ? '- Correct!' : 'Not quite —'}
             </div>
             <p class="text-sm text-text-secondary leading-relaxed">${q.exp}</p>
           </div>
           <button id="quiz-next"
             class="w-full py-3 rounded-xl bg-accent-primary text-bg font-bold text-sm hover:bg-accent-primary/90 transition-colors">
-            ${quizIdx < activeQuiz.length - 1 ? 'Next Question →' : 'See Results 🎯'}
+            ${quizIdx < activeQuiz.length - 1 ? 'Next Question →' : 'See Results '}
           </button>
         ` : ''}
       </div>

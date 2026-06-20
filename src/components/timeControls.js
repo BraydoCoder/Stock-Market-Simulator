@@ -82,7 +82,7 @@ function _render() {
                 flex flex-col items-center gap-2
                 text-xs font-medium select-none">
 
-      <!-- Travel panel (shown when 📅 is toggled) -->
+      <!-- Travel panel (shown when  is toggled) -->
       ${_travelOpen ? `
         <div class="flex items-center gap-2 bg-surface border border-border rounded-xl px-3 py-2 shadow-xl whitespace-nowrap">
           <span class="text-text-muted">Travel to:</span>
@@ -109,7 +109,7 @@ function _render() {
         <!-- Divider -->
         <div class="w-px h-4 bg-border mx-0.5"></div>
 
-        <!-- 📅 Travel button -->
+        <!--  Travel button -->
         <button id="tc-toggle-travel"
           class="px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer
             ${_travelOpen

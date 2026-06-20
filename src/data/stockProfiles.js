@@ -231,6 +231,13 @@ export const PROFILES = {
     hq: 'Dallas, TX',
     description: 'AT&T Inc. is an American multinational telecommunications conglomerate. Following the spinoff of WarnerMedia in 2022 (now Warner Bros. Discovery), AT&T is focused on its core connectivity businesses: Mobility (wireless), Consumer Wireline (fiber broadband via AT&T Fiber), and Business Wireline. AT&T Fiber has been the primary growth driver, with millions of fiber passings added annually. The wireless segment competes with Verizon and T-Mobile for postpaid phone subscribers. The company carries significant debt from prior acquisitions and has been focused on debt reduction and improving its dividend coverage. AT&T traces its roots to Alexander Graham Bell\'s telephone company founded in 1877 and is headquartered in Dallas, Texas.',
   },
+  BTC: {
+    industry: 'Cryptocurrency',
+    employees: 'N/A',
+    founded: '2009',
+    hq: 'Decentralized',
+    description: 'Bitcoin is the world\'s first decentralized digital currency, created in 2009 by the pseudonymous Satoshi Nakamoto. It operates on a peer-to-peer network secured by cryptographic proof-of-work consensus (mining) with no central authority or issuing bank. The total supply is mathematically capped at 21 million BTC, making it deflationary by design. Bitcoin is widely regarded as digital gold — a store of value and hedge against inflation. Major institutional investors, ETFs (including BlackRock\'s iShares Bitcoin Trust), and corporations now hold Bitcoin as a treasury asset. It trades 24/7 on global exchanges and has the largest market capitalization of any cryptocurrency.',
+  },
   VZ: {
     industry: 'Wireless & Broadband Telecom',
     employees: '105 K',

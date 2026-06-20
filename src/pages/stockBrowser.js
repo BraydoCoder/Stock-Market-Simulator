@@ -150,8 +150,9 @@ function tableView(stocks, holdings) {
               ${th('symbol', 'Symbol', 'text-left px-5 py-3')}
               ${th('name', 'Company', 'text-left px-3 py-3 hidden sm:table-cell')}
               <th class="text-left px-3 py-3 hidden md:table-cell">Sector</th>
+              <th class="text-left px-3 py-3 hidden lg:table-cell">Risk</th>
               ${th('price', 'Price', 'text-right px-3 py-3')}
-              ${th('change', 'Change', 'text-right px-5 py-3')}
+              ${th('change', 'Change', 'text-right px-3 py-3')}
               <th class="text-right px-3 py-3 hidden sm:table-cell">Watch</th>
               <th class="text-right px-5 py-3">Action</th>
             </tr>
@@ -228,31 +229,31 @@ function logoImg(s, size = 'w-6 h-6') {
 function stockRow(s, holdings) {
   const p = getPrice(s.symbol)
   const owned = holdings[s.symbol]
+  const riskClass = s.risk === 'Low'  ? 'bg-gain/10 border-gain/30 text-gain' :
+                    s.risk === 'High' ? 'bg-loss/10 border-loss/30 text-loss' :
+                                        'bg-warning/10 border-warning/30 text-warning'
   return `
-    <tr class="hover:bg-surface-elevated/50 transition-colors" data-symbol="${s.symbol}">
+    <tr class="hover:bg-surface-elevated/50 transition-colors cursor-pointer" data-nav-stock="${s.symbol}">
       <td class="px-5 py-3.5">
         <div class="flex items-center gap-2">
           ${logoImg(s, 'w-6 h-6')}
           <div>
-            <div class="font-mono font-bold text-text-primary">${s.symbol}</div>
+            <div class="font-mono font-bold text-text-primary group-hover:text-accent-primary">${s.symbol}</div>
             ${owned ? `<div class="text-[10px] text-accent-secondary">Owned: ${owned.shares % 1 === 0 ? owned.shares : owned.shares.toFixed(4)}</div>` : ''}
           </div>
         </div>
       </td>
       <td class="px-3 py-3.5 text-text-secondary hidden sm:table-cell">${s.name}</td>
       <td class="px-3 py-3.5 hidden md:table-cell">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
-          ${s.risk ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full border
-            ${s.risk === 'Low'  ? 'bg-gain/10 border-gain/30 text-gain' :
-              s.risk === 'High' ? 'bg-loss/10 border-loss/30 text-loss' :
-                                  'bg-warning/10 border-warning/30 text-warning'}">${s.risk}</span>` : ''}
-        </div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
+      </td>
+      <td class="px-3 py-3.5 hidden lg:table-cell">
+        ${s.risk ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${riskClass}">${s.risk}</span>` : '—'}
       </td>
       <td class="px-3 py-3.5 text-right">
         <span class="price-cell tabular-nums font-mono text-text-primary" data-sym="${s.symbol}">${pc(p.price)}</span>
       </td>
-      <td class="px-5 py-3.5 text-right">
+      <td class="px-3 py-3.5 text-right">
         <span class="change-cell tabular-nums text-xs ${gainClass(p.changePct)}" data-sym="${s.symbol}">${pct(p.changePct)}</span>
       </td>
       <td class="px-3 py-3.5 text-right hidden sm:table-cell">
@@ -295,10 +296,7 @@ function updatePriceRows() {
 
 function bindEvents() {
   const search = container.querySelector('#stock-search')
-  search?.addEventListener('input', () => {
-    clearTimeout(searchDebounce)
-    searchDebounce = setTimeout(() => { searchQuery = search.value; page = 0; render() }, 300)
-  })
+  search?.addEventListener('input', () => { searchQuery = search.value; page = 0; render() })
 
   container.querySelectorAll('.sector-btn').forEach(btn => {
     btn.addEventListener('click', () => { filterSector = btn.dataset.sector; page = 0; render() })
@@ -346,15 +344,21 @@ function bindEvents() {
     })
   })
 
+  // Table row click → stock detail
+  container.querySelectorAll('[data-nav-stock]').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return
+      window.location.hash = `#stock-${row.dataset.navStock}`
+    })
+  })
+
   // Card click navigates to detail page
   if (viewMode === 'card') {
-    container.querySelectorAll('[data-symbol]').forEach(card => {
-      if (!card.classList.contains('trade-btn')) {
-        card.addEventListener('click', (e) => {
-          if (e.target.classList.contains('trade-btn')) return
-          window.location.hash = `#stock-${card.dataset.symbol}`
-        })
-      }
+    container.querySelectorAll('.group[data-symbol]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return
+        window.location.hash = `#stock-${card.dataset.symbol}`
+      })
     })
   }
 }

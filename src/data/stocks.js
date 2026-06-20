@@ -40,6 +40,8 @@ export const STOCKS = [
   // Telecom
   { symbol: 'T',     name: 'AT&T Inc.',                sector: 'Telecom',     basePrice: 17.40,  domain: 'att.com',               risk: 'Low' },
   { symbol: 'VZ',    name: 'Verizon Communications',   sector: 'Telecom',     basePrice: 40.20,  domain: 'verizon.com',           risk: 'Low' },
+  // Crypto
+  { symbol: 'BTC',   name: 'Bitcoin',                  sector: 'Crypto',      basePrice: 67000,  domain: 'bitcoin.org',           risk: 'High' },
 ]
 
 export const SECTORS = ['All', ...new Set(STOCKS.map(s => s.sector))]
