@@ -19,6 +19,8 @@ const SECTOR_COLORS = {
   'Utilities':     'bg-cyan-500/15 border-cyan-500/40 text-cyan-400',
   'Real Estate':   'bg-pink-500/15 border-pink-500/40 text-pink-400',
   'Communication': 'bg-indigo-500/15 border-indigo-500/40 text-indigo-400',
+  'Materials':     'bg-lime-500/15 border-lime-500/40 text-lime-400',
+  'Telecom':       'bg-teal-500/15 border-teal-500/40 text-teal-400',
 }
 function sectorBadge(sector) {
   const cls = SECTOR_COLORS[sector] ?? 'bg-surface-elevated border-border text-text-muted'
