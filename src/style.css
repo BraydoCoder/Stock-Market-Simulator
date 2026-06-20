@@ -480,6 +480,3 @@
   animation: ticker-scroll 1400s linear infinite;
   will-change: transform;
 }
-#ticker-banner:hover .ticker-track {
-  animation-play-state: paused;
-}
