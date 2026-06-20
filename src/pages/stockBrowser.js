@@ -224,9 +224,9 @@ function logoImg(s, cls = 'w-10 h-10') {
   const fallback = `<div class="${cls} rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0">${initials}</div>`
   if (!s.domain) return fallback
   return `<img
-    src="https://logo.clearbit.com/${s.domain}?size=128"
+    src="https://www.google.com/s2/favicons?domain=${s.domain}&sz=64"
     alt="${s.symbol}"
-    class="${cls} rounded-xl object-contain bg-white p-1 border border-border shrink-0"
+    class="${cls} rounded-xl object-contain bg-surface-elevated p-1.5 border border-border shrink-0"
     onerror="this.replaceWith(Object.assign(document.createElement('div'), {
       className: '${cls} rounded-xl bg-surface-elevated border border-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0',
       textContent: '${initials}'
