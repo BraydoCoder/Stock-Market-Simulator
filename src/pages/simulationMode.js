@@ -22,8 +22,7 @@ let _chart         = null
 let _volChart      = null
 let _selectedSym   = 'AAPL'
 let _rafPending    = false
-let _candles       = []   // [{label, open, high, low, close, volume, up}]
-let _prevClose     = 0
+let _liveHistory   = []   // [{label, price}]
 let _travelError   = ''
 
 // ── Mount / unmount ───────────────────────────────────────────────────────────
@@ -31,8 +30,7 @@ let _travelError   = ''
 export function mountSimulationMode(el) {
   container    = el
   _rafPending  = false
-  _candles     = []
-  _prevClose   = 0
+  _liveHistory = []
   _travelError = ''
 
   _renderPage()
@@ -51,8 +49,7 @@ export function unmountSimulationMode() {
   _sub?.()
   _sub = null
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
-  if (_chart)    { _chart.destroy();    _chart    = null }
-  if (_volChart) { _volChart.destroy(); _volChart = null }
+  if (_chart) { _chart.destroy(); _chart = null }
   container = null
 }
 
@@ -65,17 +62,10 @@ function _scheduleUpdate() {
     _rafPending = false
     const p = getPrice(_selectedSym)
     if (p.price > 0) {
-      const open  = _prevClose > 0 ? _prevClose : p.price
-      const close = p.price
-      const up    = close >= open
-      const hi    = Math.max(open, close) * (1 + Math.random() * 0.025)
-      const lo    = Math.min(open, close) * (1 - Math.random() * 0.025)
-      const vol   = Math.floor(Math.random() * 80_000_000 + 5_000_000)
       const { simDate } = getTimeMachineState()
       const label = new Date(simDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      _candles.push({ label, open, high: hi, low: lo, close, volume: vol, up })
-      if (_candles.length > 120) _candles.shift()
-      _prevClose = close
+      _liveHistory.push({ label, price: p.price })
+      if (_liveHistory.length > 120) _liveHistory.shift()
     }
     _renderHeader()
     _updateCharts()
@@ -102,10 +92,13 @@ function _isoDate(d) {
 }
 
 function _getSentiment() {
-  if (_candles.length < 3) return { label: 'NEUTRAL', pct: 50, bull: false }
-  const recent = _candles.slice(-12)
-  const bears  = recent.filter(c => !c.up).length
-  const pct    = Math.round((bears / recent.length) * 100)
+  if (_liveHistory.length < 3) return { label: 'NEUTRAL', pct: 50, bull: false }
+  const recent = _liveHistory.slice(-12)
+  let downs = 0
+  for (let i = 1; i < recent.length; i++) {
+    if (recent[i].price < recent[i - 1].price) downs++
+  }
+  const pct = Math.round((downs / (recent.length - 1)) * 100)
   if (pct >= 60) return { label: 'BEARISH', pct, bull: false }
   if (pct <= 40) return { label: 'BULLISH', pct: 100 - pct, bull: true }
   return { label: 'NEUTRAL', pct: 50, bull: false }
@@ -193,14 +186,9 @@ function _renderPage() {
           <!-- populated by _renderHeader() -->
         </div>
 
-        <!-- Candlestick chart -->
-        <div style="position:relative;height:300px;padding:0 0 0 0">
+        <!-- Price line chart -->
+        <div style="position:relative;height:340px;">
           <canvas id="sim-chart"></canvas>
-        </div>
-
-        <!-- Volume chart -->
-        <div style="position:relative;height:72px;border-top:1px solid rgba(55,65,81,0.5)">
-          <canvas id="sim-vol"></canvas>
         </div>
       </div>
 
@@ -309,59 +297,36 @@ function _renderControls() {
 // ── Chart initialisation ──────────────────────────────────────────────────────
 
 function _initCharts() {
-  const canvas  = document.getElementById('sim-chart')
-  const volCvs  = document.getElementById('sim-vol')
-  if (!canvas || !volCvs) return
-
-  const chartOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
-  }
+  const canvas = document.getElementById('sim-chart')
+  if (!canvas) return
 
   _chart = new Chart(canvas, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: [],
-      datasets: [
-        // Dataset 0: wicks (thin, low → high)
-        {
-          data: [],
-          backgroundColor: [],
-          barThickness: 1,
-          order: 2,
+      datasets: [{
+        data: [],
+        borderColor: '#00D4AA',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        backgroundColor: 'rgba(0,212,170,0.06)',
+        tension: 0,
+        segment: {
+          borderColor: ctx => ctx.p1.parsed.y >= ctx.p0.parsed.y ? '#00D4AA' : '#EF4444',
         },
-        // Dataset 1: bodies (open → close)
-        {
-          data: [],
-          backgroundColor: [],
-          barThickness: 7,
-          order: 1,
-        },
-      ],
+      }],
     },
     options: {
-      ...chartOpts,
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            title: items => items[0]?.label ?? '',
-            label: ctx => {
-              if (ctx.datasetIndex !== 1) return null
-              const c = _candles[ctx.dataIndex]
-              if (!c) return null
-              return [
-                ` O: ${pc(c.open)}`,
-                ` H: ${pc(c.high)}`,
-                ` L: ${pc(c.low)}`,
-                ` C: ${pc(c.close)}`,
-              ]
-            },
-            filter: item => item.datasetIndex === 1,
-          },
+          callbacks: { label: ctx => ` ${_selectedSym}: ${pc(ctx.raw)}` },
           backgroundColor: '#111827',
           borderColor: '#1F2937',
           borderWidth: 1,
@@ -372,13 +337,8 @@ function _initCharts() {
       },
       scales: {
         x: {
-          ticks: {
-            color: '#6B7280',
-            maxTicksLimit: 8,
-            maxRotation: 0,
-            font: { size: 10 },
-          },
-          grid: { color: 'rgba(55,65,81,0.3)' },
+          ticks: { color: '#6B7280', maxTicksLimit: 8, maxRotation: 0, font: { size: 10 } },
+          grid:  { color: 'rgba(55,65,81,0.3)' },
         },
         y: {
           position: 'right',
@@ -388,63 +348,23 @@ function _initCharts() {
       },
     },
   })
-
-  _volChart = new Chart(volCvs, {
-    type: 'bar',
-    data: {
-      labels: [],
-      datasets: [{
-        data: [],
-        backgroundColor: [],
-        barThickness: 7,
-      }],
-    },
-    options: {
-      ...chartOpts,
-      scales: {
-        x: {
-          display: false,
-          ticks: { maxTicksLimit: 0 },
-        },
-        y: {
-          position: 'right',
-          ticks: {
-            color: '#6B7280',
-            maxTicksLimit: 2,
-            font: { size: 9 },
-            callback: v => v >= 1_000_000 ? (v / 1_000_000).toFixed(0) + 'M' : v,
-          },
-          grid: { color: 'rgba(55,65,81,0.2)' },
-        },
-      },
-    },
-  })
 }
 
 // ── Chart update ──────────────────────────────────────────────────────────────
 
 function _updateCharts() {
-  if (!_chart || !_volChart || !_candles.length) return
+  if (!_chart || !_liveHistory.length) return
 
-  const labels   = _candles.map(c => c.label)
-  const wickData = _candles.map(c => [c.low, c.high])
-  const bodyData = _candles.map(c => [Math.min(c.open, c.close), Math.max(c.open, c.close)])
-  const gains    = _candles.map(c => c.up ? 'rgba(0,212,170,0.85)' : 'rgba(239,68,68,0.85)')
-  const gainsWk  = _candles.map(c => c.up ? 'rgba(0,212,170,0.5)' : 'rgba(239,68,68,0.5)')
-  const volData  = _candles.map(c => c.volume)
-  const volColor = _candles.map(c => c.up ? 'rgba(0,212,170,0.45)' : 'rgba(239,68,68,0.45)')
+  const prev = _liveHistory.length >= 2
+    ? _liveHistory[_liveHistory.length - 2].price
+    : _liveHistory[0].price
+  const last = _liveHistory[_liveHistory.length - 1].price
+  const up   = last >= prev
 
-  _chart.data.labels                         = labels
-  _chart.data.datasets[0].data               = wickData
-  _chart.data.datasets[0].backgroundColor    = gainsWk
-  _chart.data.datasets[1].data               = bodyData
-  _chart.data.datasets[1].backgroundColor    = gains
+  _chart.data.labels           = _liveHistory.map(p => p.label)
+  _chart.data.datasets[0].data = _liveHistory.map(p => p.price)
+  _chart.data.datasets[0].backgroundColor = up ? 'rgba(0,212,170,0.06)' : 'rgba(239,68,68,0.06)'
   _chart.update('none')
-
-  _volChart.data.labels                      = labels
-  _volChart.data.datasets[0].data            = volData
-  _volChart.data.datasets[0].backgroundColor = volColor
-  _volChart.update('none')
 }
 
 // ── Event delegation ──────────────────────────────────────────────────────────
@@ -470,8 +390,7 @@ function _handleKey(e) {
 function _handleChange(e) {
   if (e.target.id === 'sim-sym') {
     _selectedSym = e.target.value
-    _candles     = []
-    _prevClose   = 0
+    _liveHistory = []
     _renderHeader()
     _updateCharts()
   }
