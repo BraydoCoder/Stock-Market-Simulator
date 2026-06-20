@@ -86,7 +86,11 @@ export function tick() {
   STOCKS.forEach(s => {
     const cur = store.get(s.symbol)
     if (!cur) return
-    const delta   = cur.price * (Math.random() * 0.02 - 0.01)
+    const r         = Math.random()
+    const magnitude = r < 0.05 ? 0.07        // 5 %: sharp spike
+                    : r < 0.20 ? 0.03        // 15%: medium jump
+                    :            0.008        // 80%: quiet tick
+    const delta   = cur.price * (Math.random() * magnitude * 2 - magnitude)
     const price   = Math.max(round2(cur.price + delta), 0.01)
     const chg     = round2(price - s.basePrice)
     const chgPct  = round2((chg / s.basePrice) * 100)
