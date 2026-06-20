@@ -6,7 +6,7 @@ import { pc, pct, gainClass } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
 import { FINNHUB_API_KEY } from '../config.js'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 50
 
 let filterSector = 'All'
 let searchQuery = ''
