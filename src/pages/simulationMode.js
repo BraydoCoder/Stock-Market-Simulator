@@ -26,6 +26,11 @@ let _liveHistory   = []   // [{label, price}]
 let _travelError   = ''
 let _aiPanelOpen   = false
 
+// Calendar picker state
+let _calTargetId  = null   // 'sim-start-date' | 'sim-end-date' | null
+let _calViewYear  = new Date().getFullYear()
+let _calViewMonth = new Date().getMonth()
+
 // ── Mount / unmount ───────────────────────────────────────────────────────────
 
 export function mountSimulationMode(el) {
@@ -55,6 +60,7 @@ export function unmountSimulationMode() {
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
   document.removeEventListener('click', _handleOutsideClick)
   if (_chart) { _chart.destroy(); _chart = null }
+  _calTargetId = null
   container = null
 }
 
@@ -167,18 +173,31 @@ function _renderPage() {
         <!-- Start date (editable) -->
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">Start Date</span>
-          <input id="sim-start-date" type="date"
-            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
-                   outline-none focus:border-accent-primary transition-colors cursor-pointer min-w-[160px]" />
+          <div class="relative flex items-center">
+            <input id="sim-start-date" type="text" placeholder="YYYY-MM-DD"
+              class="bg-surface-elevated border border-border rounded-xl pl-3 pr-9 py-2 text-sm text-text-primary
+                     outline-none focus:border-accent-primary transition-colors min-w-[155px] font-mono" />
+            <button data-action="open-cal" data-cal-for="sim-start-date"
+              class="absolute right-2 text-text-muted hover:text-accent-primary transition-colors cursor-pointer text-base leading-none"
+              title="Open calendar">&#128197;</button>
+          </div>
         </div>
 
         <!-- End date / travel target -->
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">End Date</span>
-          <input id="sim-end-date" type="date"
-            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
-                   outline-none focus:border-accent-secondary transition-colors cursor-pointer min-w-[160px]" />
+          <div class="relative flex items-center">
+            <input id="sim-end-date" type="text" placeholder="YYYY-MM-DD"
+              class="bg-surface-elevated border border-border rounded-xl pl-3 pr-9 py-2 text-sm text-text-primary
+                     outline-none focus:border-accent-secondary transition-colors min-w-[155px] font-mono" />
+            <button data-action="open-cal" data-cal-for="sim-end-date"
+              class="absolute right-2 text-text-muted hover:text-accent-secondary transition-colors cursor-pointer text-base leading-none"
+              title="Open calendar">&#128197;</button>
+          </div>
         </div>
+
+        <!-- Calendar popup (shared, floats near active input) -->
+        <div id="sim-calendar" class="hidden fixed z-[200] bg-surface border border-border rounded-2xl shadow-2xl p-3 w-64 select-none"></div>
 
         <!-- Go button -->
         <button data-action="travel-go"
@@ -422,8 +441,22 @@ function _handleClick(e) {
     case 'live':       returnToLive();          break
     case 'step-back':  stepBack();              break
     case 'step-fwd':   stepForward();           break
-    case 'travel-go':  _doTravel();             break
-    case 'toggle-ai':  _toggleAI();             break
+    case 'travel-go':  _doTravel();                  break
+    case 'toggle-ai':  _toggleAI();                  break
+    case 'open-cal':   _openCal(btn.dataset.calFor, btn); break
+  }
+
+  // Calendar navigation / date pick
+  const calAction = e.target.closest('[data-cal-action]')?.dataset.calAction
+  if (calAction === 'prev') { _calViewMonth--; if (_calViewMonth < 0) { _calViewMonth = 11; _calViewYear-- }; _renderCalPopup(); return }
+  if (calAction === 'next') { _calViewMonth++; if (_calViewMonth > 11) { _calViewMonth = 0;  _calViewYear++ }; _renderCalPopup(); return }
+
+  const calDate = e.target.closest('[data-cal-date]')?.dataset.calDate
+  if (calDate && _calTargetId) {
+    const input = document.getElementById(_calTargetId)
+    if (input) { input.value = calDate; input.dispatchEvent(new Event('change')) }
+    _closeCal()
+    return
   }
 }
 
@@ -462,6 +495,16 @@ function _handleOutsideClick(e) {
   const dd     = document.getElementById('sim-sym-dropdown')
   if (search && !search.contains(e.target) && dd && !dd.contains(e.target)) {
     _closeDropdown()
+  }
+
+  // Close calendar if click is outside it and outside any open-cal button
+  const cal = document.getElementById('sim-calendar')
+  if (cal && !cal.classList.contains('hidden') && _calTargetId) {
+    const input   = document.getElementById(_calTargetId)
+    const trigger = container?.querySelector(`[data-cal-for="${_calTargetId}"]`)
+    if (!cal.contains(e.target) && !trigger?.contains(e.target) && !input?.contains(e.target)) {
+      _closeCal()
+    }
   }
 }
 
@@ -707,6 +750,110 @@ function _renderAIPrediction() {
         </div>
       </div>
 
+    </div>
+  `
+}
+
+// ── Calendar popup ────────────────────────────────────────────────────────────
+
+function _openCal(inputId, triggerBtn) {
+  const input = document.getElementById(inputId)
+  const cal   = document.getElementById('sim-calendar')
+  if (!input || !cal) return
+
+  // If same calendar is already open, toggle it closed
+  if (_calTargetId === inputId && !cal.classList.contains('hidden')) {
+    _closeCal(); return
+  }
+
+  _calTargetId = inputId
+
+  // Seed month/year from input value if valid, else today
+  const parsed = input.value ? new Date(input.value + 'T00:00:00') : null
+  if (parsed && !isNaN(parsed)) {
+    _calViewYear  = parsed.getFullYear()
+    _calViewMonth = parsed.getMonth()
+  } else {
+    const today   = new Date()
+    _calViewYear  = today.getFullYear()
+    _calViewMonth = today.getMonth()
+  }
+
+  _renderCalPopup()
+  cal.classList.remove('hidden')
+
+  // Position the popup below the trigger button
+  const rect = triggerBtn.getBoundingClientRect()
+  const popupW = 256
+  let left = rect.left
+  let top  = rect.bottom + 6
+  // Keep within viewport
+  if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8
+  if (top + 280 > window.innerHeight - 8)    top  = rect.top - 280 - 6
+  cal.style.left = left + 'px'
+  cal.style.top  = top  + 'px'
+}
+
+function _closeCal() {
+  const cal = document.getElementById('sim-calendar')
+  cal?.classList.add('hidden')
+  _calTargetId = null
+}
+
+function _renderCalPopup() {
+  const cal = document.getElementById('sim-calendar')
+  if (!cal) return
+
+  const selectedVal = _calTargetId ? document.getElementById(_calTargetId)?.value : ''
+  const today = new Date(); today.setHours(0,0,0,0)
+
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
+  const firstDay = new Date(_calViewYear, _calViewMonth, 1).getDay()
+  const daysInMonth = new Date(_calViewYear, _calViewMonth + 1, 0).getDate()
+
+  // Build date cells
+  let cells = ''
+  // Empty leading cells
+  for (let i = 0; i < firstDay; i++) cells += `<div></div>`
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso  = `${_calViewYear}-${String(_calViewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const thisDate = new Date(_calViewYear, _calViewMonth, d)
+    const isToday    = thisDate.getTime() === today.getTime()
+    const isSelected = iso === selectedVal
+
+    let cls = 'flex items-center justify-center rounded-lg text-xs h-8 cursor-pointer transition-colors '
+    if (isSelected) cls += 'bg-accent-secondary text-white font-bold'
+    else if (isToday) cls += 'border border-accent-primary text-accent-primary font-semibold hover:bg-accent-primary/10'
+    else cls += 'text-text-secondary hover:bg-surface-elevated hover:text-text-primary'
+
+    cells += `<div class="${cls}" data-cal-date="${iso}">${d}</div>`
+  }
+
+  cal.innerHTML = `
+    <div class="flex items-center justify-between mb-2 px-1">
+      <button data-cal-action="prev"
+        class="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors text-lg leading-none cursor-pointer">
+        &#8249;
+      </button>
+      <span class="text-sm font-semibold text-text-primary">
+        ${MONTHS[_calViewMonth]} ${_calViewYear}
+      </span>
+      <button data-cal-action="next"
+        class="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors text-lg leading-none cursor-pointer">
+        &#8250;
+      </button>
+    </div>
+    <div class="grid grid-cols-7 gap-0.5 mb-1">
+      ${DAYS.map(d => `<div class="text-center text-[10px] font-medium text-text-muted h-6 flex items-center justify-center">${d}</div>`).join('')}
+    </div>
+    <div class="grid grid-cols-7 gap-0.5">
+      ${cells}
+    </div>
+    <div class="mt-2 pt-2 border-t border-border flex justify-end">
+      <button data-cal-date="${today.toISOString().slice(0,10)}"
+        class="text-[10px] text-accent-primary hover:underline cursor-pointer px-1">Today</button>
     </div>
   `
 }
