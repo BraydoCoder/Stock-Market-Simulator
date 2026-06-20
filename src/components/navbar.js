@@ -63,6 +63,14 @@ export function renderNavbar() {
             ${marketOpen ? t('Open') : t('Closed')}
           </div>
 
+          <!-- Guest badge -->
+          ${localStorage.getItem('stockpilot_guest') === '1' ? `
+            <button id="nav-guest-badge" title="You're in guest mode — click to create an account"
+              class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-warning/40 bg-warning/10 text-warning text-[10px] font-bold hover:bg-warning/20 transition-colors whitespace-nowrap">
+              👤 GUEST
+            </button>
+          ` : ''}
+
           <!-- Balance -->
           <div class="text-right hidden md:block">
             <div class="text-[10px] text-text-muted uppercase tracking-wide leading-none mb-0.5">${t('Balance')}</div>
@@ -117,9 +125,14 @@ export function renderNavbar() {
               <button id="nav-feedback" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors border-t border-border">
                 Send Feedback
               </button>
-              <button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
-                ${t('Sign Out')}
-              </button>
+              ${localStorage.getItem('stockpilot_guest') === '1'
+                ? `<button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-accent-primary font-semibold hover:bg-surface-elevated transition-colors border-t border-border">
+                    Create Account →
+                  </button>`
+                : `<button id="nav-signout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-loss hover:bg-surface-elevated transition-colors border-t border-border">
+                    ${t('Sign Out')}
+                  </button>`
+              }
             </div>
           </div>
 
@@ -217,8 +230,17 @@ function bindNavEvents() {
     openFeedbackModal()
   })
 
-  // Sign out
+  // Guest badge → trigger sign-up
+  document.getElementById('nav-guest-badge')?.addEventListener('click', () => {
+    window.__showAuth__?.()
+  })
+
+  // Sign out (or "Create Account" in guest mode)
   document.getElementById('nav-signout')?.addEventListener('click', async () => {
+    if (localStorage.getItem('stockpilot_guest') === '1') {
+      window.__showAuth__?.()
+      return
+    }
     const { signOut } = await import('../utils/auth.js')
     await signOut()
     // onAuthStateChange in main.js handles redirecting to auth screen

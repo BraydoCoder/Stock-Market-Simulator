@@ -6,7 +6,7 @@
 // and refreshed every 60 seconds. Otherwise the simulation tick runs.
 
 import './style.css'
-import { initNavbar } from './components/navbar.js'
+import { initNavbar, renderNavbar } from './components/navbar.js'
 import { initPrices, startFinnhubPolling } from './api/prices.js'
 import { FINNHUB_API_KEY } from './config.js'
 import { getState, subscribe } from './state/store.js'
@@ -270,11 +270,16 @@ async function init() {
     currentRoute = 'auth'
     mountAuth(main)
     window.addEventListener('auth-ready', () => {
+      localStorage.removeItem('stockpilot_guest')
+      renderNavbar()
       unmountAuth()
       currentRoute = null
       mount(getRoute())
     }, { once: true })
   }
+
+  // Expose showAuth globally so the navbar guest badge can trigger it
+  window.__showAuth__ = showAuth
 
   // First-time / logged-out visitors see the welcome page first.
   function showWelcome() {
@@ -285,6 +290,13 @@ async function init() {
       unmountWelcome()
       currentRoute = null
       showAuth()
+    }, () => {
+      // Guest mode — skip auth, persist choice so reloads stay in guest mode
+      localStorage.setItem('stockpilot_guest', '1')
+      unmountWelcome()
+      currentRoute = null
+      renderNavbar()
+      mount(getRoute())
     })
   }
 
@@ -294,6 +306,7 @@ async function init() {
     // and SIGNED_IN auto-dismisses the auth screen on token auto-refresh.
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('stockpilot_guest')
         showAuth()
       }
       // Navigation after sign-in is handled by the auth-ready event dispatched
@@ -306,7 +319,7 @@ async function init() {
     // Falls back to showing welcome after 3s if the token refresh call stalls.
     const timeout = new Promise(res => setTimeout(() => res(null), 3000))
     const session = await Promise.race([getSession(), timeout])
-    if (!session) showWelcome()
+    if (!session && localStorage.getItem('stockpilot_guest') !== '1') showWelcome()
   } catch (_) {
     // Supabase unavailable — continue in offline mode
   }

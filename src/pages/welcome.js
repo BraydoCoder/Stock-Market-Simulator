@@ -2,16 +2,16 @@
 
 let container = null
 
-export function mountWelcome(el, onStart) {
+export function mountWelcome(el, onStart, onGuest) {
   container = el
-  render(onStart)
+  render(onStart, onGuest)
 }
 
 export function unmountWelcome() {
   container = null
 }
 
-function render(onStart) {
+function render(onStart, onGuest) {
   if (!container) return
 
   container.innerHTML = `
@@ -36,7 +36,7 @@ function render(onStart) {
             and learn real investing skills — all with PC$10,000 of play money.
           </p>
 
-          <!-- CTA button -->
+          <!-- CTA buttons -->
           <button id="welcome-start"
             class="px-12 py-4 rounded-2xl bg-accent-primary text-bg text-xl font-bold
                    hover:bg-accent-primary/90 transition-all duration-150
@@ -46,6 +46,12 @@ function render(onStart) {
           </button>
 
           <p class="mt-4 text-xs text-text-muted">Already have an account? Click Get Started to log in.</p>
+
+          <button id="welcome-guest"
+            class="mt-3 text-sm text-text-muted hover:text-text-primary transition-colors underline underline-offset-4">
+            Continue as Guest
+          </button>
+          <p class="text-[11px] text-text-muted/60 mt-1">No account needed · progress saved in your browser</p>
 
           <!-- Feature cards -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-20 max-w-2xl w-full text-left">
@@ -66,6 +72,7 @@ function render(onStart) {
   `
 
   container.querySelector('#welcome-start')?.addEventListener('click', onStart)
+  container.querySelector('#welcome-guest')?.addEventListener('click', () => onGuest?.())
 }
 
 function card(icon, title, desc) {
