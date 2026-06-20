@@ -419,6 +419,143 @@ const QUIZ = [
   { q: 'When a company\'s earnings "beat expectations," it means:', choices: ['The stock price automatically rises 10%', 'The company earned more than analysts predicted', 'The company beat its competitors this quarter', 'Revenue was higher than the previous quarter'], correct: 1, exp: 'Beating expectations means actual results exceeded Wall Street analysts\' forecasts. This usually (but not always) causes the stock price to rise.' },
 ]
 
+// ── Per-topic quizzes ──────────────────────────────────────────────────────────
+
+const QUIZ_BY_TOPIC = {
+  'what-is-a-stock': [
+    { q: 'What does owning a share of stock represent?', choices: ['A loan to the company', 'Ownership of a fraction of the company', 'A government-backed savings instrument', 'A guaranteed return'], correct: 1, exp: 'A stock (share) makes you a shareholder — you own a real, if tiny, piece of the company.' },
+    { q: 'What is an IPO?', choices: ['A type of limit order', 'An interest rate announcement', 'When a company first sells shares to the public', 'A quarterly profit report'], correct: 2, exp: 'An IPO (Initial Public Offering) is when a company raises money by selling shares to the public for the first time.' },
+    { q: 'What are "shares outstanding"?', choices: ['Shares owned by insiders only', 'The total number of shares a company has issued', 'Shares waiting to be sold at the next IPO', 'Shares that have lost value'], correct: 1, exp: 'Shares outstanding is the total count of all shares issued by a company — it\'s used to calculate market cap.' },
+    { q: 'Which type of stock typically gives shareholders voting rights?', choices: ['Preferred stock', 'Bond shares', 'Common stock', 'ETF units'], correct: 2, exp: 'Common stock gives voting rights on company decisions. Preferred stock usually pays fixed dividends but lacks voting rights.' },
+  ],
+  'what-is-a-stock-exchange': [
+    { q: 'Which U.S. stock exchange was founded in 1792?', choices: ['NASDAQ', 'NYSE', 'S&P 500', 'Dow Jones'], correct: 1, exp: 'The New York Stock Exchange (NYSE), located on Wall Street, was founded in 1792 and is the world\'s largest by market cap.' },
+    { q: 'What makes NASDAQ unique compared to NYSE?', choices: ['It only lists energy companies', 'It has no physical trading floor — it\'s fully electronic', 'It operates 24 hours a day', 'It requires higher listing fees'], correct: 1, exp: 'NASDAQ, founded in 1971, was the world\'s first electronic stock market and has no physical trading floor.' },
+    { q: 'What are U.S. stock market regular trading hours (Eastern Time)?', choices: ['8:00 AM – 5:00 PM', '9:00 AM – 4:30 PM', '9:30 AM – 4:00 PM', '10:00 AM – 3:00 PM'], correct: 2, exp: 'U.S. markets trade from 9:30 AM to 4:00 PM ET, Monday through Friday, excluding federal holidays.' },
+    { q: 'What is a "dual listing"?', choices: ['Owning shares in two competing companies', 'A company listed on two different exchanges', 'Trading the same stock twice in one day', 'An ETF that tracks two indices'], correct: 1, exp: 'A dual listing is when a company lists its shares on two stock exchanges simultaneously to attract investors from multiple markets.' },
+  ],
+  'how-stocks-make-money': [
+    { q: 'What is "capital appreciation"?', choices: ['Receiving dividend payments', 'The stock price rising above what you paid', 'Earning interest on cash holdings', 'A company buying back its own shares'], correct: 1, exp: 'Capital appreciation (capital gain) is profit from a stock\'s price rising. You only realize the gain when you sell.' },
+    { q: 'What is an "unrealized gain"?', choices: ['A profit you\'ve already collected', 'A gain that only exists on paper until you sell', 'A loss that has been reversed', 'Dividend income before tax'], correct: 1, exp: 'An unrealized (paper) gain exists while you still hold the stock. It becomes a realized gain only when you sell.' },
+    { q: 'How is dividend yield calculated?', choices: ['Annual dividend ÷ earnings per share', 'Annual dividend ÷ stock price × 100', 'Stock price ÷ annual dividend × 100', 'Total dividends paid ÷ number of shareholders'], correct: 1, exp: 'Dividend yield = (annual dividend per share ÷ stock price) × 100. A $2 annual dividend on a $50 stock = 4% yield.' },
+    { q: 'A stock rises 6% in price and pays a 2% dividend. What is the total return?', choices: ['6%', '2%', 'About 8%', '4%'], correct: 2, exp: 'Total return combines price appreciation and dividend income. 6% + 2% = approximately 8% total return.' },
+  ],
+  'market-cap': [
+    { q: 'How is market capitalization calculated?', choices: ['Annual revenue × profit margin', 'Share price × shares outstanding', 'Total assets − total liabilities', 'Earnings per share × P/E ratio'], correct: 1, exp: 'Market cap = Share Price × Shares Outstanding. It represents the total market value of a company\'s equity.' },
+    { q: 'Which category describes a company with a market cap over $200 billion?', choices: ['Large-cap', 'Mid-cap', 'Mega-cap', 'Macro-cap'], correct: 2, exp: 'Mega-cap companies (over $200B) are the most stable and globally recognized — think Apple, Microsoft, Amazon.' },
+    { q: 'What is the market cap range for "mid-cap" companies?', choices: ['Under $300M', '$300M–$2B', '$2B–$10B', '$10B–$200B'], correct: 2, exp: 'Mid-cap companies have market caps between $2B and $10B. They offer more growth potential than large-caps with moderate risk.' },
+    { q: 'What does a high market cap actually reflect?', choices: ['A company\'s annual profit', 'What the market currently believes the company is worth', 'The replacement cost of all company assets', 'The company\'s cash on hand'], correct: 1, exp: 'Market cap is perception, not intrinsic value. A company can have a $10B market cap with $1B in revenue if investors expect fast growth.' },
+  ],
+  'bull-and-bear': [
+    { q: 'A bear market is officially defined as a decline of at least:', choices: ['5% from a recent high', '10% from a recent high', '20% from a recent high', '30% from a recent high'], correct: 2, exp: 'A bear market is a 20%+ drop from a recent peak. A 10–19.9% drop is called a correction.' },
+    { q: 'The longest U.S. bull market ran from 2009 to 2020 — how long was that?', choices: ['About 5 years', 'About 7 years', 'Over 11 years', 'About 15 years'], correct: 2, exp: 'The 2009–2020 bull market lasted over 11 years, making it the longest in U.S. history until COVID ended it in early 2020.' },
+    { q: 'What defines a market correction?', choices: ['A 5% drop from a 52-week high', 'A 10–19.9% drop from a recent high', 'A 20%+ drop from a recent high', 'Any negative month for the index'], correct: 1, exp: 'A correction is a 10–19.9% decline from a recent peak. It\'s considered healthy and normal, occurring roughly every 1–2 years.' },
+    { q: 'What has historically always followed a bear market?', choices: ['A prolonged recession', 'A new bear market within 6 months', 'A bull market recovery', 'Government intervention'], correct: 2, exp: 'Historically, every bear market has been followed by a bull market recovery — without exception. This is why staying invested matters.' },
+  ],
+  'risk-vs-reward': [
+    { q: 'What is the fundamental trade-off in investing?', choices: ['Stocks vs. bonds', 'Higher potential returns always come with higher risk', 'Growth vs. income', 'Short-term vs. long-term gains'], correct: 1, exp: 'This is the core principle: no investment offers high returns without higher risk. Safe investments offer low returns; risky ones offer high potential returns.' },
+    { q: 'Which investment category typically offers the lowest risk AND lowest return?', choices: ['Small-cap stocks', 'Corporate bonds', 'Cash and government bonds', 'Index funds'], correct: 2, exp: 'Cash in savings accounts and government bonds are the safest investments but earn the least — often barely beating inflation.' },
+    { q: 'What does "volatility" measure in investing?', choices: ['How old a stock is', 'How often a stock pays dividends', 'How much a stock\'s price fluctuates', 'A stock\'s total market value'], correct: 2, exp: 'Volatility measures the magnitude of price swings. A highly volatile stock may move 5% per day; a stable one may move less than 0.5%.' },
+    { q: 'Which factor should most influence your personal risk tolerance?', choices: ['Which stocks are trending on social media', 'Your time horizon and whether you can emotionally handle large losses', 'Which sector is performing best this year', 'How many different stocks you own'], correct: 1, exp: 'Risk tolerance depends on your age, what the money is for, and your emotional ability to hold through a 40% portfolio drop.' },
+  ],
+  'what-is-a-portfolio': [
+    { q: 'What is "asset allocation"?', choices: ['Picking the best individual stocks', 'How you divide your money among different investment types', 'The total cash value of your investments', 'The number of different stocks you own'], correct: 1, exp: 'Asset allocation is your strategic mix of stocks, bonds, cash, and other assets — it\'s the most important portfolio decision you make.' },
+    { q: 'What does "rebalancing" mean?', choices: ['Selling all losing positions', 'Restoring your target investment mix by selling overweighted and buying underweighted assets', 'Moving to 100% cash during market downturns', 'Adding money to your top performers'], correct: 1, exp: 'Rebalancing keeps your portfolio aligned with your target allocation. Over time, winners grow too large — rebalancing trims them and buys laggards.' },
+    { q: 'What is "unrealized P&L"?', choices: ['Profits you\'ve already withdrawn', 'Paper gains or losses on positions you still hold', 'Losses that are tax-deductible', 'Dividends not yet collected'], correct: 1, exp: 'Unrealized (paper) P&L is the difference between current market value and your cost basis for positions you haven\'t sold yet.' },
+    { q: 'A common rule of thumb says your stock percentage should be:', choices: ['Always 50% regardless of age', '100 minus your age', '110 minus your age', 'Equal to your annual savings rate'], correct: 2, exp: 'The "110 minus age" rule suggests a 20-year-old hold 90% stocks, a 60-year-old hold 50% — more stocks when young, less as you near retirement.' },
+  ],
+  'buy-low-sell-high': [
+    { q: 'What is "loss aversion" in behavioral finance?', choices: ['Selling all stocks during a crash', 'The tendency to feel losses roughly twice as painfully as equivalent gains feel good', 'Avoiding high-volatility stocks', 'Never selling a losing position'], correct: 1, exp: 'Loss aversion is a proven cognitive bias: a $1,000 loss hurts about twice as much as a $1,000 gain feels good — causing poor investment decisions.' },
+    { q: 'What happens to long-term returns if you miss just the 10 best trading days in 20 years?', choices: ['Returns drop slightly (1–2%)', 'Returns are dramatically reduced', 'Returns are unaffected — just a few days', 'Returns improve because you avoided volatility'], correct: 1, exp: 'Missing just the 10 best days in a 20-year period dramatically slashes total returns. The best days often come in the worst markets.' },
+    { q: 'When is the right time to sell a stock according to disciplined investing principles?', choices: ['When it\'s down 10%', 'When the overall market is falling', 'When your investment thesis fundamentally changes', 'After 12 months to qualify for long-term capital gains'], correct: 2, exp: 'Sell when the original reason you bought has fundamentally changed — not because of price swings or market mood.' },
+    { q: 'What is a better alternative to trying to time the market?', choices: ['Selling in April and buying in October each year', 'Dollar-cost averaging and long-term holding', 'Tracking analyst price targets', 'Buying only during bear markets'], correct: 1, exp: 'Consistent long-term investing (DCA) beats market timing for most investors. Studies show even professionals can\'t reliably time markets.' },
+  ],
+  'diversification': [
+    { q: 'If you hold 20 equal-weighted stocks and one drops 80%, how much of your portfolio do you lose?', choices: ['80%', '40%', '8%', 'About 4%'], correct: 3, exp: 'One stock = 5% of a 20-stock portfolio. An 80% loss on that position = 80% × 5% = only a 4% portfolio loss. That\'s diversification at work.' },
+    { q: 'Why does owning 10 tech stocks NOT count as true diversification?', choices: ['Tech stocks are too volatile to hold', 'They tend to rise and fall together (high correlation)', 'You need at least 20 of any sector', 'Tech stocks don\'t pay dividends'], correct: 1, exp: 'True diversification requires low correlation between holdings. Tech stocks respond to the same factors, so they\'re not truly independent risks.' },
+    { q: 'Research suggests how many stocks eliminates most stock-specific risk?', choices: ['3–5 stocks', '10–12 stocks', '15–20 stocks', '50+ stocks'], correct: 2, exp: 'Owning 15–20 stocks across different sectors eliminates most unsystematic (company-specific) risk without needing hundreds of holdings.' },
+    { q: 'What is "over-diversification"?', choices: ['Owning bonds and stocks at the same time', 'Owning so many investments that you simply mirror the market at higher cost', 'Spreading across too many asset classes', 'Holding more than 10% of your portfolio in cash'], correct: 1, exp: 'Over-diversification means you\'re essentially running a personal index fund at high cost. A low-cost ETF would do the same thing automatically.' },
+  ],
+  'dollar-cost-averaging': [
+    { q: 'What is the core mechanic of Dollar-Cost Averaging (DCA)?', choices: ['Invest everything at the market\'s annual low', 'Invest a fixed amount at regular intervals regardless of price', 'Only invest when prices are below their 200-day moving average', 'Double your investment when prices fall'], correct: 1, exp: 'DCA means putting in a set amount (e.g., $100/month) on a consistent schedule — no matter what the market is doing.' },
+    { q: 'When the price is LOW during a DCA period, what happens?', choices: ['You skip that month\'s investment', 'Your fixed dollar amount buys MORE shares', 'Your fixed dollar amount buys FEWER shares', 'You invest double to take advantage'], correct: 1, exp: 'At lower prices, your fixed amount buys more shares automatically — naturally accumulating more units when they\'re cheapest.' },
+    { q: 'If you contribute to a 401(k) every paycheck, what strategy are you already practicing?', choices: ['Market timing', 'Value investing', 'Dollar-cost averaging', 'Short selling'], correct: 2, exp: 'Regular 401(k) contributions are textbook DCA — you invest on schedule without worrying about market conditions.' },
+    { q: 'What is the biggest psychological advantage of DCA?', choices: ['It guarantees positive returns', 'It removes the pressure of deciding when the perfect time to invest is', 'It lets you avoid paying taxes on gains', 'It eliminates all investment risk'], correct: 1, exp: 'DCA automates the investment decision, removing the paralysis and regret of trying to time the market perfectly.' },
+  ],
+  'value-vs-growth': [
+    { q: 'What do value investors primarily look for?', choices: ['Companies expected to grow revenue the fastest', 'Stocks trading below what the investor believes the company is truly worth', 'Companies with the highest P/E ratios', 'IPOs with strong early momentum'], correct: 1, exp: 'Value investors hunt for bargains — stocks the market has underpriced. They profit when the market eventually corrects the mispricing.' },
+    { q: 'Which famous investor is most associated with value investing?', choices: ['Cathie Wood', 'Peter Lynch', 'George Soros', 'Warren Buffett'], correct: 3, exp: 'Warren Buffett, along with his mentor Benjamin Graham and partner Charlie Munger, is the most famous value investor in history.' },
+    { q: 'Which of these is typical of a growth stock?', choices: ['Low P/E ratio and high dividends', 'Stable earnings and a long history', 'High P/E ratio, no dividends, and high expected growth', 'Low volatility and large buybacks'], correct: 2, exp: 'Growth stocks often look "expensive" by traditional metrics — the market pays up for future earnings potential, not current income.' },
+    { q: 'How do value and growth investing compare historically?', choices: ['Growth always outperforms over any time period', 'Value has outperformed over very long periods, but growth dominated the 2010s', 'They perform identically over all time periods', 'Value is always better for young investors'], correct: 1, exp: 'Long-run evidence favors value, but growth crushed value in the 2010s. Many investors blend both styles.' },
+  ],
+  'etfs-and-index-funds': [
+    { q: 'What does the S&P 500 index track?', choices: ['The 500 fastest-growing U.S. companies', 'The 500 largest U.S. publicly traded companies', 'The 500 most traded stocks on NASDAQ', '500 global companies across multiple countries'], correct: 1, exp: 'The S&P 500 tracks the 500 largest U.S. companies by market cap and is widely considered the benchmark for U.S. stock market performance.' },
+    { q: 'How do ETFs differ from traditional index funds?', choices: ['ETFs have higher fees', 'ETFs can only hold bonds', 'ETFs trade on exchanges throughout the day like individual stocks', 'ETFs are only available to institutional investors'], correct: 2, exp: 'ETFs trade on stock exchanges in real time. Traditional index funds only price once at end of day.' },
+    { q: 'What is the typical expense ratio for an index fund vs. an actively managed fund?', choices: ['Index: 2–3%, Active: 0.1%', 'Index: 0.03–0.20%, Active: 1–2%', 'They are identical by regulation', 'Index: 0.5%, Active: 0.5%'], correct: 1, exp: 'Index funds charge dramatically less. A 1% fee difference compounded over 30 years can consume roughly 25% of your final portfolio value.' },
+    { q: 'Over 15+ years, approximately what percentage of actively managed large-cap funds underperform their benchmark index?', choices: ['About 30%', 'About 50%', 'About 65%', 'More than 85%'], correct: 3, exp: 'More than 85% of actively managed U.S. large-cap funds fail to beat their benchmark after fees over 15 years — a core argument for index investing.' },
+  ],
+  'reading-a-chart': [
+    { q: 'In a candlestick chart, what does a GREEN candle indicate?', choices: ['Trading volume was high that period', 'The closing price was higher than the opening price', 'The stock made a new all-time high', 'The company announced positive news'], correct: 1, exp: 'A green (bullish) candle means the price closed higher than it opened that period — buyers won the session.' },
+    { q: 'What is a "support level"?', choices: ['The 52-week high price', 'A price level where historical buying has prevented the price from falling further', 'The average trading volume over 50 days', 'The minimum price analysts expect'], correct: 1, exp: 'Support is a price "floor" where buyers have historically stepped in. Multiple bounces from the same level strengthen it.' },
+    { q: 'What is a "golden cross"?', choices: ['Three consecutive green candlestick days', 'When trading volume exceeds 10 million shares', 'When the 50-day moving average crosses above the 200-day moving average', 'When a stock reaches its all-time high'], correct: 2, exp: 'A golden cross (50-day MA crossing above the 200-day MA) is widely watched as a bullish long-term signal.' },
+    { q: 'A large price move on LOW volume is generally considered:', choices: ['More reliable — less noise', 'A strong trend confirmation', 'Less trustworthy — lacks conviction', 'A sign of institutional buying'], correct: 2, exp: 'Low-volume moves lack conviction. High volume behind a move shows strong participation, making the move more meaningful.' },
+  ],
+  'what-is-a-limit-order': [
+    { q: 'What does a market order guarantee?', choices: ['The exact price you specified', 'Immediate execution at the best available price', 'Your order fills within 24 hours', 'No slippage from the displayed price'], correct: 1, exp: 'Market orders execute immediately at whatever the current best price is — execution is guaranteed, but not the specific price.' },
+    { q: 'What does a limit order guarantee (and NOT guarantee)?', choices: ['Execution but not price', 'Price (or better) but not execution', 'Both price and execution', 'Execution within 60 seconds'], correct: 1, exp: 'A limit order ensures you won\'t pay more (buy) or receive less (sell) than your price — but if the stock never hits your limit, the order won\'t fill.' },
+    { q: 'What is the "bid-ask spread"?', choices: ['The difference between a stock\'s high and low for the day', 'The tax rate on short-term gains', 'The difference between what buyers will pay (bid) and what sellers want (ask)', 'The gap between a stock\'s IPO price and current price'], correct: 2, exp: 'The spread is the cost of immediate execution. A buy market order fills at the ask; a sell fills at the bid. Liquid stocks have tight spreads; illiquid stocks have wide ones.' },
+    { q: 'When should you prefer a limit order over a market order?', choices: ['When you need shares immediately regardless of price', 'When trading highly liquid blue-chip stocks', 'When you have a target price or are trading less liquid stocks', 'When the market is moving quickly'], correct: 2, exp: 'Use limit orders when you care about price (a target level) or when trading thin stocks where slippage could be significant.' },
+  ],
+  'what-is-a-stop-loss': [
+    { q: 'What triggers a stop-loss order to execute?', choices: ['The stock reaches an all-time high', 'The stock price drops to your specified level', 'Earnings are announced', 'Trading volume spikes above average'], correct: 1, exp: 'A stop-loss triggers automatically when the stock price falls to your preset level, limiting your downside loss.' },
+    { q: 'What is a trailing stop-loss?', choices: ['A stop that moves down as price falls', 'A stop that automatically adjusts upward as the stock price rises, locking in gains', 'A stop that triggers based on time, not price', 'A fixed stop that never changes'], correct: 1, exp: 'A trailing stop follows the price upward — if a stock at $100 rises to $130 with a 10% trailing stop, the stop moves up to $117, protecting those gains.' },
+    { q: 'What is the key difference between a stop-market and a stop-limit order?', choices: ['Stop-market costs more in fees', 'Stop-limit guarantees execution; stop-market does not', 'Stop-market becomes a market order when triggered; stop-limit becomes a limit order and may not fill if price gaps past it', 'They are functionally identical'], correct: 2, exp: 'Stop-market guarantees execution but not price. Stop-limit won\'t fill if price gaps past your limit (e.g., after-hours news causes a big gap down).' },
+    { q: 'Why should you set your stop-loss BEFORE entering a trade?', choices: ['Tax rules require it', 'To get a better price', 'You make better decisions before emotions are triggered by watching losses accumulate', 'Brokers require it for margin accounts'], correct: 2, exp: 'Pre-trade decisions are rational. Once a trade is going against you, fear and hope cloud judgment — a pre-set stop enforces the rational decision.' },
+  ],
+  'volume-and-liquidity': [
+    { q: 'What does "volume" measure in stock markets?', choices: ['The total market cap of a stock', 'The number of shares traded during a given period', 'A stock\'s daily price range', 'How many analysts cover a stock'], correct: 1, exp: 'Volume = total shares traded in a period. It measures participation and conviction behind price moves.' },
+    { q: 'A stock price rises sharply on DECLINING volume. This is generally:', choices: ['A strong bullish confirmation', 'A warning that the move may lack broad conviction', 'Irrelevant — price is all that matters', 'A signal that institutions are buying'], correct: 1, exp: 'Rising price on falling volume suggests fewer participants are driving the move — it\'s less trustworthy and may not sustain.' },
+    { q: 'What makes a stock "illiquid"?', choices: ['It has a high P/E ratio', 'It doesn\'t pay dividends', 'Very few shares trade daily, making it hard to enter/exit without moving the price', 'It trades on NASDAQ instead of NYSE'], correct: 2, exp: 'Illiquid stocks have thin trading — your buy/sell orders can significantly move the price, and you may have to wait days to exit a position.' },
+    { q: 'What minimum average daily volume do most experts recommend beginners stick to?', choices: ['10,000 shares', '100,000 shares', '500,000 shares', '1 million shares'], correct: 3, exp: 'Stocks trading above 1 million shares daily are generally liquid enough to enter and exit without meaningfully moving the price.' },
+  ],
+  'short-selling': [
+    { q: 'What is the first step in a short sale?', choices: ['Buy shares at the current price', 'Borrow shares from your broker and immediately sell them', 'Place a limit buy order below the market', 'Wait for the price to fall, then buy'], correct: 1, exp: 'You borrow shares from your broker and sell them immediately. You profit if you can later buy them back at a lower price.' },
+    { q: 'What is theoretically the maximum loss for a short seller?', choices: ['The amount initially invested (like a regular stock)', 'Capped at 100% since stocks can\'t go negative', 'Unlimited — a stock can theoretically rise without limit', '50% of the position'], correct: 2, exp: 'A stock can rise indefinitely. If you short at $50 and the stock reaches $500, your loss is $450 per share. There is no cap.' },
+    { q: 'What causes a "short squeeze"?', choices: ['A company files for bankruptcy', 'A rapidly rising stock price forces short sellers to buy shares to cut losses, pushing the price even higher', 'Regulators ban short selling of a stock', 'High dividend announcements'], correct: 1, exp: 'Short sellers must eventually buy shares back. A rising price triggers buying from panicked shorts, which fuels more buying — a feedback loop.' },
+    { q: 'The 2021 GameStop (GME) short squeeze was notable because:', choices: ['GameStop reported record profits', 'It was caused by natural market forces', 'Reddit retail investors coordinated to squeeze hedge funds that had heavily shorted GME', 'The U.S. government intervened to push prices up'], correct: 2, exp: 'WallStreetBets Reddit users coordinated buying of heavily-shorted GME stock, sending it from ~$20 to over $480 and causing massive losses for short-selling hedge funds.' },
+  ],
+  'candlestick-patterns': [
+    { q: 'What does a "Doji" candlestick signal?', choices: ['Strong buying momentum', 'Indecision between buyers and sellers — open and close are nearly equal', 'A guaranteed reversal', 'Very high trading volume'], correct: 1, exp: 'A Doji has almost no body, just wicks — the open and close are nearly the same. It signals market indecision and often appears at trend reversals.' },
+    { q: 'What does a "Hammer" pattern suggest?', choices: ['Strong bearish continuation', 'Sellers maintained control throughout the session', 'Buyers pushed prices back up after sellers drove them down — potential bottom signal', 'A breakout to new highs is coming'], correct: 2, exp: 'A Hammer has a small body at the top and a long lower wick. It appears in downtrends: sellers pushed prices way down intraday, but buyers recovered most of the loss.' },
+    { q: 'What is a "Bearish Engulfing" pattern?', choices: ['A large green candle that engulfs the previous red candle', 'A large red candle that completely engulfs the previous green candle — potential reversal down', 'Three consecutive red candles', 'A Doji following a long uptrend'], correct: 1, exp: 'Bearish Engulfing appears at the top of an uptrend: sellers overwhelm buyers in a single session, engulfing the prior day\'s gain — possible reversal signal.' },
+    { q: 'The most important rule when trading candlestick patterns is:', choices: ['Act immediately whenever you spot a pattern', 'Patterns alone guarantee direction', 'Always confirm with volume and overall trend context before acting', 'Patterns only work on daily charts'], correct: 2, exp: 'Candlestick patterns fail often. Always confirm with volume (high volume = conviction) and ensure the pattern fits the broader trend context.' },
+  ],
+  'compound-interest': [
+    { q: 'What does compound interest mean?', choices: ['Your interest is paid twice per year', 'Interest is calculated only on your original principal', 'Your earnings are added to principal and then earn returns themselves', 'The interest rate increases each year'], correct: 2, exp: 'Compounding means your returns earn returns. This creates exponential — not linear — growth over time.' },
+    { q: 'Using the Rule of 72, at an 8% annual return, how long does it take money to double?', choices: ['4 years', '6 years', '9 years', '12 years'], correct: 2, exp: '72 ÷ 8 = 9 years. The Rule of 72 is a quick mental shortcut: divide 72 by your annual return to estimate doubling time.' },
+    { q: 'In the compound interest formula A = P × (1+r)^t, what does "t" represent?', choices: ['The interest rate per period', 'The total amount after compounding', 'The number of time periods (years)', 'The original principal invested'], correct: 2, exp: 't is the number of compounding periods (typically years). Increasing t (starting earlier) has the largest impact on final wealth.' },
+    { q: 'Why does starting to invest 10 years earlier potentially double your final wealth?', choices: ['You get 10 more years of dividends', 'Each decade of compounding roughly doubles the final amount again', 'Brokers offer bonuses for long-term accounts', 'Tax rules favor older accounts'], correct: 1, exp: 'Because of exponential growth, each decade roughly doubles the outcome. $1K at 8% for 30 years → $10K; for 40 years → $21.7K. The extra decade nearly doubled it.' },
+  ],
+  'pe-ratio': [
+    { q: 'How is the P/E ratio calculated?', choices: ['Profit ÷ equity', 'Stock price ÷ earnings per share (EPS)', 'Market cap ÷ annual revenue', 'Share price ÷ book value'], correct: 1, exp: 'P/E = Stock Price ÷ EPS. It tells you how many times earnings investors are willing to pay for a stock.' },
+    { q: 'A very HIGH P/E ratio typically indicates:', choices: ['The company is unprofitable and bankrupt', 'Investors expect strong future earnings growth', 'The stock is definitely undervalued', 'The company pays very high dividends'], correct: 1, exp: 'A high P/E means investors are paying a premium for anticipated growth. Tech companies often have high P/Es because investors expect future earnings to justify today\'s price.' },
+    { q: 'What is the S&P 500\'s historical average P/E range?', choices: ['5–10', '15–20', '30–40', '50–60'], correct: 1, exp: 'The S&P 500 has historically averaged a P/E of 15–20. Significantly higher readings suggest the market may be overvalued relative to historical norms.' },
+    { q: 'What is "forward P/E" vs "trailing P/E"?', choices: ['Forward uses last year\'s earnings; trailing uses analyst forecasts', 'Forward uses analyst estimates of future earnings; trailing uses actual past earnings', 'They are calculated the same way', 'Forward is for growth stocks; trailing is for value stocks'], correct: 1, exp: 'Trailing P/E = Price ÷ last 12 months actual EPS (backward-looking). Forward P/E = Price ÷ next 12 months estimated EPS (speculative but forward-looking).' },
+  ],
+  'understanding-earnings': [
+    { q: 'How often do U.S. public companies report earnings?', choices: ['Monthly', 'Twice a year', 'Quarterly (4 times per year)', 'Annually'], correct: 2, exp: 'Public companies must report quarterly — roughly 3–4 weeks after each quarter ends. The biggest earnings seasons are January–February and April–May.' },
+    { q: 'What does it mean when a company "beats expectations"?', choices: ['The stock automatically rises 10%', 'The company earned more than Wall Street analysts predicted', 'The company beat its own guidance exactly', 'Revenue grew faster than the previous quarter'], correct: 1, exp: 'Beating expectations means actual EPS or revenue exceeded the analyst consensus forecast. This typically (but not always) causes a stock price jump.' },
+    { q: 'What is forward guidance and why does it often matter more than current results?', choices: ['It\'s a legal requirement, not useful to investors', 'Management\'s outlook for future performance — it shows whether the growth is expected to continue', 'The analyst consensus forecast, published before earnings', 'Revenue projected by external economists'], correct: 1, exp: 'Forward guidance tells you where the company is headed. Strong current results with weak guidance can still tank a stock — investors care about the future.' },
+    { q: 'What is the "sell the news" effect?', choices: ['Selling before earnings to avoid risk', 'When even good earnings cause a stock to fall because they were already priced in', 'The tendency of stocks to fall the day news is published', 'Selling after a quarterly dividend is announced'], correct: 1, exp: 'If everyone expected great numbers, the good report provides no positive surprise. The stock may fall as traders who bought in anticipation sell when the event occurs.' },
+  ],
+  'inflation-and-returns': [
+    { q: 'What is the difference between nominal and real returns?', choices: ['Nominal is after tax; real is before tax', 'Nominal is your raw return; real return subtracts inflation', 'Nominal is dividends; real is price appreciation', 'They are the same measure'], correct: 1, exp: 'Nominal return = raw percentage gain. Real return = nominal − inflation. If you earn 5% but inflation is 3%, your real purchasing power gain is only 2%.' },
+    { q: 'If your savings account earns 1% but inflation is 3%, your real return is:', choices: ['+4%', '+2%', '0%', '−2%'], correct: 3, exp: 'Real return = 1% − 3% = −2%. Your account balance grows but your purchasing power is shrinking — you\'re losing ground in real terms.' },
+    { q: 'The S&P 500 has historically returned about 10% nominally. After 2–3% inflation, the real return is approximately:', choices: ['1–2%', '4–5%', '7%', '10%'], correct: 2, exp: 'Approximately 10% nominal − 3% inflation = ~7% real annual return. This is why equities are the primary long-term wealth-building tool for most investors.' },
+    { q: 'Which type of investment is typically HURT MOST by inflation?', choices: ['Commodity stocks', 'Real estate investment trusts', 'Cash and fixed-rate bonds', 'Inflation-protected securities (TIPS)'], correct: 2, exp: 'Cash loses purchasing power and fixed-rate bonds pay a set amount that buys less over time. Real assets and equities often outpace inflation.' },
+  ],
+}
+
 // ── App state ──────────────────────────────────────────────────────────────────
 
 const CATEGORIES = ['All', 'Basics', 'Strategy', 'Trading', 'Advanced']
@@ -432,6 +569,8 @@ let quizScore    = 0
 let quizDone     = false
 let quizSelected = null
 let quizAnswered = false
+let quizSlug     = null
+let activeQuiz   = []
 
 export function mountLearn(el) {
   container      = el
@@ -443,6 +582,8 @@ export function mountLearn(el) {
   quizDone       = false
   quizSelected   = null
   quizAnswered   = false
+  quizSlug       = null
+  activeQuiz     = []
   renderList()
 }
 
@@ -587,7 +728,7 @@ function renderLesson() {
       <div class="rounded-xl border border-gain/20 bg-gain/5 px-5 py-4 flex items-center justify-between gap-4">
         <div>
           <div class="text-xs font-semibold text-gain mb-0.5">Ready to test your knowledge?</div>
-          <div class="text-[11px] text-text-muted">Take the full quiz covering all ${QUIZ.length} topics.</div>
+          <div class="text-[11px] text-text-muted">${QUIZ_BY_TOPIC[l.slug] ? `${QUIZ_BY_TOPIC[l.slug].length} questions about ${l.title}.` : `General quiz covering all ${QUIZ.length} topics.`}</div>
         </div>
         <button id="goto-quiz"
           class="shrink-0 px-4 py-2 rounded-lg bg-gain/15 border border-gain/30 text-gain text-xs font-bold hover:bg-gain/25 transition-colors">
@@ -605,7 +746,7 @@ function renderLesson() {
   `
 
   container.querySelector('#back-to-learn')?.addEventListener('click', () => { activeLesson = null; renderList() })
-  container.querySelector('#goto-quiz')?.addEventListener('click', () => startQuiz())
+  container.querySelector('#goto-quiz')?.addEventListener('click', () => startQuiz(l.slug))
   container.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => { activeLesson = btn.dataset.nav; renderLesson() })
   })
@@ -613,7 +754,9 @@ function renderLesson() {
 
 // ── Quiz ──────────────────────────────────────────────────────────────────────
 
-function startQuiz() {
+function startQuiz(slug = null) {
+  quizSlug     = slug
+  activeQuiz   = slug && QUIZ_BY_TOPIC[slug] ? QUIZ_BY_TOPIC[slug] : QUIZ
   quizActive   = true
   quizIdx      = 0
   quizScore    = 0
@@ -627,8 +770,9 @@ function renderQuiz() {
   if (!container) return
 
   if (quizDone) {
-    const pct   = Math.round((quizScore / QUIZ.length) * 100)
+    const pct   = Math.round((quizScore / activeQuiz.length) * 100)
     const grade = pct >= 90 ? 'Outstanding!' : pct >= 70 ? 'Well Done!' : pct >= 50 ? 'Keep Studying!' : 'Keep At It!'
+    const lesson = quizSlug ? LESSONS.find(l => l.slug === quizSlug) : null
 
     container.innerHTML = `
       <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
@@ -638,9 +782,10 @@ function renderQuiz() {
         <div class="bg-surface border border-border rounded-2xl p-8 text-center space-y-4">
           <div class="text-5xl mb-2">${pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '📖' : '💪'}</div>
           <h1 class="text-2xl font-display font-bold text-text-primary">${grade}</h1>
+          ${lesson ? `<p class="text-xs text-text-muted uppercase tracking-wide font-medium">${lesson.title}</p>` : ''}
           <p class="text-text-muted text-sm">You scored</p>
           <div class="text-5xl font-bold font-mono ${pct >= 70 ? 'text-gain' : pct >= 50 ? 'text-warning' : 'text-loss'}">${pct}%</div>
-          <p class="text-sm text-text-muted">${quizScore} of ${QUIZ.length} correct</p>
+          <p class="text-sm text-text-muted">${quizScore} of ${activeQuiz.length} correct</p>
           <div class="w-full h-2.5 bg-surface-elevated rounded-full overflow-hidden">
             <div class="h-full rounded-full ${pct >= 70 ? 'bg-gain' : pct >= 50 ? 'bg-warning' : 'bg-loss'}"
               style="width:${pct}%"></div>
@@ -650,10 +795,15 @@ function renderQuiz() {
               class="px-5 py-2.5 rounded-xl bg-accent-primary text-bg font-bold text-sm hover:bg-accent-primary/90 transition-colors">
               Retry Quiz
             </button>
-            <button id="quiz-back"
-              class="px-5 py-2.5 rounded-xl bg-surface-elevated border border-border text-text-secondary text-sm hover:text-text-primary transition-colors">
-              Back to Lessons
-            </button>
+            ${lesson
+              ? `<button id="quiz-back-lesson"
+                  class="px-5 py-2.5 rounded-xl bg-surface-elevated border border-border text-text-secondary text-sm hover:text-text-primary transition-colors">
+                  Back to Lesson
+                </button>`
+              : `<button id="quiz-back"
+                  class="px-5 py-2.5 rounded-xl bg-surface-elevated border border-border text-text-secondary text-sm hover:text-text-primary transition-colors">
+                  Back to Lessons
+                </button>`}
           </div>
         </div>
 
@@ -661,7 +811,10 @@ function renderQuiz() {
           <div class="bg-surface border border-accent-primary/20 rounded-2xl p-5">
             <div class="text-xs font-bold text-accent-primary uppercase tracking-wide mb-3">Suggested review</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              ${LESSONS.slice(0, 8).map(l => `
+              ${(lesson
+                ? LESSONS.filter(l => l.category === lesson.category).slice(0, 8)
+                : LESSONS.slice(0, 8)
+              ).map(l => `
                 <button data-lesson="${l.slug}" class="review-btn text-left text-xs px-3 py-2 bg-surface-elevated rounded-lg text-text-muted hover:text-text-primary transition-colors">
                   ${l.title}
                 </button>
@@ -672,16 +825,19 @@ function renderQuiz() {
       </div>
     `
     container.querySelector('#back-to-learn')?.addEventListener('click', () => { quizActive = false; renderList() })
-    container.querySelector('#quiz-retry')?.addEventListener('click', () => startQuiz())
+    container.querySelector('#quiz-retry')?.addEventListener('click', () => startQuiz(quizSlug))
     container.querySelector('#quiz-back')?.addEventListener('click', () => { quizActive = false; renderList() })
+    container.querySelector('#quiz-back-lesson')?.addEventListener('click', () => {
+      quizActive = false; activeLesson = quizSlug; renderLesson()
+    })
     container.querySelectorAll('.review-btn').forEach(btn => {
       btn.addEventListener('click', () => { quizActive = false; activeLesson = btn.dataset.lesson; renderLesson() })
     })
     return
   }
 
-  const q           = QUIZ[quizIdx]
-  const progressPct = (quizIdx / QUIZ.length) * 100
+  const q           = activeQuiz[quizIdx]
+  const progressPct = (quizIdx / activeQuiz.length) * 100
 
   container.innerHTML = `
     <div class="max-w-xl mx-auto px-4 py-6 space-y-5">
@@ -692,7 +848,7 @@ function renderQuiz() {
       <!-- Progress -->
       <div>
         <div class="flex justify-between text-xs text-text-muted mb-2">
-          <span>Question ${quizIdx + 1} of ${QUIZ.length}</span>
+          <span>Question ${quizIdx + 1} of ${activeQuiz.length}</span>
           <span class="${quizScore > 0 ? 'text-gain' : ''}">${quizScore} correct</span>
         </div>
         <div class="w-full h-1.5 bg-surface-elevated rounded-full overflow-hidden">
@@ -741,7 +897,7 @@ function renderQuiz() {
           </div>
           <button id="quiz-next"
             class="w-full py-3 rounded-xl bg-accent-primary text-bg font-bold text-sm hover:bg-accent-primary/90 transition-colors">
-            ${quizIdx < QUIZ.length - 1 ? 'Next Question →' : 'See Results 🎯'}
+            ${quizIdx < activeQuiz.length - 1 ? 'Next Question →' : 'See Results 🎯'}
           </button>
         ` : ''}
       </div>
@@ -755,13 +911,13 @@ function renderQuiz() {
       if (quizAnswered) return
       quizSelected = Number(btn.dataset.choice)
       quizAnswered = true
-      if (quizSelected === QUIZ[quizIdx].correct) quizScore++
+      if (quizSelected === activeQuiz[quizIdx].correct) quizScore++
       renderQuiz()
     })
   })
 
   container.querySelector('#quiz-next')?.addEventListener('click', () => {
-    if (quizIdx < QUIZ.length - 1) {
+    if (quizIdx < activeQuiz.length - 1) {
       quizIdx++
       quizSelected = null
       quizAnswered = false

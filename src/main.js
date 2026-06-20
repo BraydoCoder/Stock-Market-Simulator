@@ -29,6 +29,7 @@ import { mountLearn,       unmountLearn        } from './pages/learn.js'
 import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMode.js'
 import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
+import { initTicker } from './components/ticker.js'
 import { checkAchievements } from './utils/achievements.js'
 import { supabase } from './lib/supabase.js'
 import { getSession } from './utils/auth.js'
@@ -208,6 +209,7 @@ function bootApp() {
   startTimeMachine()
 
   initNavbar()
+  initTicker()
 
   subscribe(() => checkAchievements())
 

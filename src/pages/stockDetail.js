@@ -62,9 +62,15 @@ function render() {
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <div class="flex items-center gap-3 mb-1">
+          <div class="flex items-center gap-3 mb-1 flex-wrap">
             <h1 class="text-3xl font-display font-bold text-text-primary">${currentSymbol}</h1>
             <span class="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${stock?.sector ?? ''}</span>
+            ${stock?.risk ? `<span class="text-xs font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide
+              ${stock.risk === 'Low'  ? 'bg-gain/10 border-gain/30 text-gain' :
+                stock.risk === 'High' ? 'bg-loss/10 border-loss/30 text-loss' :
+                                        'bg-warning/10 border-warning/30 text-warning'}">
+              ${stock.risk} Risk
+            </span>` : ''}
             <span class="text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${marketOpen ? 'bg-gain/10 text-gain' : 'bg-surface-elevated text-text-muted'}">
               <span class="w-1.5 h-1.5 rounded-full ${marketOpen ? 'bg-gain animate-pulse' : 'bg-text-muted'}"></span>
               ${marketOpen ? 'Market Open' : 'Market Closed'}

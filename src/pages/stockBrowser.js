@@ -241,7 +241,13 @@ function stockRow(s, holdings) {
       </td>
       <td class="px-3 py-3.5 text-text-secondary hidden sm:table-cell">${s.name}</td>
       <td class="px-3 py-3.5 hidden md:table-cell">
-        <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
+          ${s.risk ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full border
+            ${s.risk === 'Low'  ? 'bg-gain/10 border-gain/30 text-gain' :
+              s.risk === 'High' ? 'bg-loss/10 border-loss/30 text-loss' :
+                                  'bg-warning/10 border-warning/30 text-warning'}">${s.risk}</span>` : ''}
+        </div>
       </td>
       <td class="px-3 py-3.5 text-right">
         <span class="price-cell tabular-nums font-mono text-text-primary" data-sym="${s.symbol}">${pc(p.price)}</span>

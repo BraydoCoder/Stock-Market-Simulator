@@ -1,50 +1,47 @@
-// simulationMode.js — Time Warp page
+// simulationMode.js — Time Warp page (candlestick redesign)
 import Chart from 'chart.js/auto'
 import { pc } from '../utils/format.js'
 import { getPrice } from '../api/prices.js'
-import { STOCKS } from '../data/stocks.js'
+import { STOCKS, getStock } from '../data/stocks.js'
 import { FINNHUB_API_KEY } from '../config.js'
 import {
   getTimeMachineState,
   subscribeTimeMachine,
   setSpeed,
   pauseTime,
-  startRewind,
-  stopRewind,
   stepBack,
   stepForward,
   returnToLive,
   travelToDate,
-  getHistory,
 } from '../lib/timeMachine.js'
 
-let container        = null
-let _sub             = null
-let _pricesHandler   = null
-let _chart           = null
-let _selectedSym     = 'AAPL'
-let _travelOpen      = false
-let _travelError     = ''
-let _rafPending      = false
-let _liveHistory     = []   // [{date, price}] — built from live store each tick
+let container      = null
+let _sub           = null
+let _pricesHandler = null
+let _chart         = null
+let _volChart      = null
+let _selectedSym   = 'AAPL'
+let _rafPending    = false
+let _candles       = []   // [{label, open, high, low, close, volume, up}]
+let _prevClose     = 0
+let _travelError   = ''
 
 // ── Mount / unmount ───────────────────────────────────────────────────────────
 
 export function mountSimulationMode(el) {
   container    = el
-  _travelOpen  = false
-  _travelError = ''
   _rafPending  = false
+  _candles     = []
+  _prevClose   = 0
+  _travelError = ''
 
   _renderPage()
-  _initChart()
+  _initCharts()
 
-  // Event delegation — attached ONCE to the stable container, survives re-renders
-  container.addEventListener('click',  _handleClick)
-  container.addEventListener('keydown', _handleKey)
+  container.addEventListener('click',   _handleClick)
   container.addEventListener('change',  _handleChange)
+  container.addEventListener('keydown', _handleKey)
 
-  _liveHistory = []
   _sub = subscribeTimeMachine(_scheduleUpdate)
   _pricesHandler = () => _scheduleUpdate()
   window.addEventListener('prices-updated', _pricesHandler)
@@ -54,7 +51,8 @@ export function unmountSimulationMode() {
   _sub?.()
   _sub = null
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
-  if (_chart) { _chart.destroy(); _chart = null }
+  if (_chart)    { _chart.destroy();    _chart    = null }
+  if (_volChart) { _volChart.destroy(); _volChart = null }
   container = null
 }
 
@@ -65,18 +63,23 @@ function _scheduleUpdate() {
   _rafPending = true
   requestAnimationFrame(() => {
     _rafPending = false
-    // Record current live price on every tick so the chart shows real movement
     const p = getPrice(_selectedSym)
     if (p.price > 0) {
+      const open  = _prevClose > 0 ? _prevClose : p.price
+      const close = p.price
+      const up    = close >= open
+      const hi    = Math.max(open, close) * (1 + Math.random() * 0.025)
+      const lo    = Math.min(open, close) * (1 - Math.random() * 0.025)
+      const vol   = Math.floor(Math.random() * 80_000_000 + 5_000_000)
       const { simDate } = getTimeMachineState()
-      _liveHistory.push({ date: new Date(simDate), price: p.price })
-      if (_liveHistory.length > 80) _liveHistory.shift()
+      const label = new Date(simDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      _candles.push({ label, open, high: hi, low: lo, close, volume: vol, up })
+      if (_candles.length > 120) _candles.shift()
+      _prevClose = close
     }
+    _renderHeader()
+    _updateCharts()
     _renderControls()
-    _updateChart()
-    _updateStockPrice()
-    _updatePriceTable()
-    _updateStats()
   })
 }
 
@@ -84,22 +87,40 @@ function _scheduleUpdate() {
 
 function _fmtDate(d) {
   if (!d) return ''
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return d instanceof Date
+    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function _isoDate(d) {
   if (!d) return ''
-  const y  = d.getFullYear()
-  const m  = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
+  const date = d instanceof Date ? d : new Date(d)
+  const y  = date.getFullYear()
+  const m  = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
+}
+
+function _getSentiment() {
+  if (_candles.length < 3) return { label: 'NEUTRAL', pct: 50, bull: false }
+  const recent = _candles.slice(-12)
+  const bears  = recent.filter(c => !c.up).length
+  const pct    = Math.round((bears / recent.length) * 100)
+  if (pct >= 60) return { label: 'BEARISH', pct, bull: false }
+  if (pct <= 40) return { label: 'BULLISH', pct: 100 - pct, bull: true }
+  return { label: 'NEUTRAL', pct: 50, bull: false }
+}
+
+function _riskColor(risk) {
+  if (risk === 'Low')    return 'bg-gain/15 border-gain/40 text-gain'
+  if (risk === 'High')   return 'bg-loss/15 border-loss/40 text-loss'
+  return 'bg-warning/15 border-warning/40 text-warning'
 }
 
 // ── Static page shell (rendered once on mount) ────────────────────────────────
 
 function _renderPage() {
   if (!container) return
-
   const symOptions = STOCKS.map(s =>
     `<option value="${s.symbol}" ${s.symbol === _selectedSym ? 'selected' : ''}>${s.symbol} — ${s.name}</option>`
   ).join('')
@@ -107,384 +128,239 @@ function _renderPage() {
   container.innerHTML = `
     <div class="max-w-6xl mx-auto px-4 py-6 space-y-4">
 
-      <!-- Header -->
+      <!-- Page header -->
       <div>
-        <h1 class="text-2xl font-display font-bold text-text-primary">Time Warp</h1>
+        <h1 class="text-2xl font-display font-bold text-text-primary">Simulation Mode</h1>
         <p class="text-sm text-text-muted mt-1">
-          Control simulated time — speed up, pause, rewind, or jump to any date.
+          Simulate market time — speed up, pause, or jump to any date.
           ${FINNHUB_API_KEY
-            ? '<span class="text-gain font-medium">&#9679; Real Finnhub prices active</span>'
-            : '<span class="text-accent-primary font-medium">&#9679; Simulation mode &mdash; mock data for future dates</span>'}
+            ? '<span class="text-gain font-medium">&#9679; Real prices active</span>'
+            : '<span class="text-accent-primary font-medium">&#9679; Mock simulation</span>'}
         </p>
       </div>
 
-      <!-- Controls card — inner divs re-rendered; outer card persists -->
+      <!-- Top controls bar -->
+      <div class="bg-surface border border-border rounded-2xl px-5 py-4 flex flex-wrap items-end gap-4">
+        <!-- Stock -->
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">Stock</span>
+          <select id="sim-sym"
+            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
+                   outline-none focus:border-accent-primary transition-colors cursor-pointer min-w-[200px]">
+            ${symOptions}
+          </select>
+        </div>
+
+        <!-- Start date (read-only — shows when history started) -->
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">Start Date</span>
+          <div id="sim-start-date"
+            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary min-w-[140px]">
+            &mdash;
+          </div>
+        </div>
+
+        <!-- End date / travel target -->
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-medium text-text-muted uppercase tracking-widest">End Date</span>
+          <input id="sim-end-date" type="date"
+            class="bg-surface-elevated border border-border rounded-xl px-3 py-2 text-sm text-text-primary
+                   outline-none focus:border-accent-secondary transition-colors cursor-pointer min-w-[160px]" />
+        </div>
+
+        <!-- Go button -->
+        <button data-action="travel-go"
+          class="px-4 py-2 rounded-xl bg-accent-secondary text-white font-bold text-sm
+                 hover:bg-accent-secondary/80 transition-colors cursor-pointer self-end">
+          Go &rarr;
+        </button>
+
+        <!-- Divider -->
+        <div class="flex-1"></div>
+
+        <!-- Speed pills -->
+        <div id="sim-speed-bar" class="flex items-center gap-1.5 self-end"></div>
+
+        <!-- Stop / Live button -->
+        <div id="sim-stop-btn" class="self-end"></div>
+      </div>
+
+      <!-- Chart card -->
       <div class="bg-surface border border-border rounded-2xl overflow-hidden">
-        <div id="tw-controls" class="px-4 py-3"></div>
-        <div id="tw-travel-panel"></div>
-      </div>
 
-      <!-- Main grid: chart left, sidebar right -->
-      <div class="grid grid-cols-1 lg:grid-cols-[1fr_288px] gap-4">
-
-        <!-- Left: stock price chart -->
-        <div class="bg-surface border border-border rounded-2xl overflow-hidden">
-
-          <!-- Stock selector + live price (selector is static; price span is updated in-place) -->
-          <div class="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
-            <select id="tw-sym"
-              class="bg-surface-elevated border border-border rounded-lg px-2.5 py-1.5 text-sm
-                     text-text-primary outline-none focus:border-accent-primary transition-colors cursor-pointer">
-              ${symOptions}
-            </select>
-            <div id="tw-stock-price" class="flex items-baseline gap-2">
-              <!-- updated in _updateStockPrice() -->
-            </div>
-            <span class="text-[10px] text-text-muted ml-auto hidden sm:block">Price over simulated time</span>
-          </div>
-
-          <!-- Chart canvas -->
-          <div style="position:relative;height:264px;">
-            <canvas id="tw-chart"></canvas>
-          </div>
+        <!-- Stock info header (updates in-place) -->
+        <div id="sim-header" class="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
+          <!-- populated by _renderHeader() -->
         </div>
 
-        <!-- Right sidebar -->
-        <div class="flex flex-col gap-4">
+        <!-- Candlestick chart -->
+        <div style="position:relative;height:300px;padding:0 0 0 0">
+          <canvas id="sim-chart"></canvas>
+        </div>
 
-          <!-- Stats -->
-          <div id="tw-stats"
-            class="bg-surface border border-border rounded-2xl p-4 grid grid-cols-2 gap-x-4 gap-y-3">
-            <!-- updated in _updateStats() -->
-          </div>
-
-          <!-- Live price table -->
-          <div class="bg-surface border border-border rounded-2xl overflow-hidden flex-1">
-            <div class="px-4 py-2.5 border-b border-border flex items-center justify-between">
-              <span class="text-xs font-semibold text-text-primary uppercase tracking-wider">Live Prices</span>
-              <span class="text-[10px] text-text-muted">Updates each tick</span>
-            </div>
-            <div id="tw-price-table" class="overflow-y-auto" style="max-height:340px;">
-              <!-- updated in _updatePriceTable() -->
-            </div>
-          </div>
-
+        <!-- Volume chart -->
+        <div style="position:relative;height:72px;border-top:1px solid rgba(55,65,81,0.5)">
+          <canvas id="sim-vol"></canvas>
         </div>
       </div>
+
+      <!-- Travel error -->
+      <div id="sim-travel-error" class="hidden text-loss text-sm px-1"></div>
+
     </div>
   `
 
+  _renderHeader()
   _renderControls()
-  _updateStockPrice()
-  _updatePriceTable()
-  _updateStats()
 }
 
-// ── Controls (re-rendered on each TM state change) ────────────────────────────
-// Buttons use data-action attrs; clicks are caught by container delegation.
+// ── Header (stock info, risk, AI, price) ──────────────────────────────────────
 
-function _renderControls() {
-  const ctrlEl   = document.getElementById('tw-controls')
-  const travelEl = document.getElementById('tw-travel-panel')
-  if (!ctrlEl) return
-
-  const { speed, mode, historySize, histIdx, speeds, simDate, minDate } = getTimeMachineState()
-  const isLive      = mode === 'live'
-  const isPaused    = mode === 'paused'
-  const isRewinding = mode === 'rewinding'
-  const isTraveling = mode === 'traveling'
-  const canBack     = histIdx === null ? historySize > 0 : histIdx > 0
-  const canFwd      = histIdx !== null && histIdx < historySize - 1
-  const ticksBack   = histIdx !== null ? (historySize - 1 - histIdx) : 0
-  const dateLabel   = _fmtDate(simDate)
-  const curVal      = _isoDate(simDate)
-  const minVal      = minDate ? _isoDate(minDate) : '2000-01-01'
-  // ── Traveling UI ──
-  if (isTraveling) {
-    ctrlEl.innerHTML = `
-      <div class="flex items-center gap-3 text-sm text-accent-secondary">
-        <span class="animate-pulse">&#9654;&#9654;</span>
-        <span>Simulating to ${dateLabel}&hellip;</span>
-        <span class="text-text-muted text-xs">${historySize} ticks recorded</span>
-      </div>
-    `
-    if (travelEl) travelEl.innerHTML = ''
-    return
-  }
-
-  // ── Live UI ──
-  if (isLive) {
-    ctrlEl.innerHTML = `
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-
-        <div class="flex items-center gap-1.5 mr-1">
-          <span class="w-2 h-2 rounded-full bg-gain animate-pulse"></span>
-          <span class="font-bold text-gain">LIVE</span>
-          <span class="font-mono text-text-secondary">${dateLabel}</span>
-        </div>
-
-        <div class="w-px h-4 bg-border"></div>
-
-        <!-- Speed buttons -->
-        <div class="flex items-center gap-1">
-          ${speeds.map(s => {
-            const active = speed === s
-            return `<button
-              data-action="speed" data-speed="${s}"
-              class="w-9 py-1 rounded-lg border text-center transition-colors
-                ${active
-                  ? 'bg-accent-primary text-bg border-accent-primary font-bold'
-                  : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated hover:border-accent-primary/50 cursor-pointer'}">
-              ${s}&times;
-            </button>`
-          }).join('')}
-        </div>
-
-        <div class="w-px h-4 bg-border"></div>
-
-        <!-- Pause -->
-        <button data-action="pause"
-          class="px-3 py-1 rounded-lg border transition-colors
-            border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated cursor-pointer">
-          &#9646;&#9646; Pause
-        </button>
-
-        <!-- Rewind -->
-        <button data-action="rewind" ${!canBack ? 'disabled' : ''}
-          class="px-3 py-1 rounded-lg border transition-colors
-            ${canBack
-              ? 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated cursor-pointer'
-              : 'border-border/20 text-text-muted/30 cursor-not-allowed'}">
-          &#9664;&#9664; Rewind
-        </button>
-
-        <div class="w-px h-4 bg-border ml-auto"></div>
-
-        <!-- Travel -->
-        <button data-action="toggle-travel"
-          class="px-3 py-1 rounded-lg border transition-colors cursor-pointer
-            ${_travelOpen
-              ? 'bg-accent-secondary/15 border-accent-secondary text-accent-secondary'
-              : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated'}">
-          &#128197; Travel
-        </button>
-      </div>
-    `
-  } else {
-    // ── Paused / rewinding UI ──
-    ctrlEl.innerHTML = `
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-
-        <div class="flex items-center gap-1.5 mr-1">
-          <span class="text-text-muted">${isRewinding ? '&#9664;&#9664;' : '&#9646;&#9646;'}</span>
-          <span class="font-mono text-text-secondary">${dateLabel}</span>
-          ${ticksBack > 0
-            ? `<span class="text-text-muted text-[10px]">(${ticksBack} tick${ticksBack !== 1 ? 's' : ''} back)</span>`
-            : ''}
-        </div>
-
-        <div class="w-px h-4 bg-border"></div>
-
-        <button data-action="step-back" ${!canBack ? 'disabled' : ''}
-          class="px-3 py-1 rounded-lg border transition-colors
-            ${canBack
-              ? 'border-border text-text-secondary hover:bg-surface-elevated cursor-pointer'
-              : 'border-border/20 text-text-muted/30 cursor-not-allowed'}">
-          &#9664; Back
-        </button>
-
-        ${isRewinding
-          ? `<button data-action="stop-rewind"
-               class="px-3 py-1 rounded-lg border border-warning/40 bg-warning/10 text-warning
-                      hover:bg-warning/20 transition-colors cursor-pointer">
-               &#9646;&#9646; Stop
-             </button>`
-          : `<button data-action="start-rewind" ${!canBack ? 'disabled' : ''}
-               class="px-3 py-1 rounded-lg border transition-colors
-                 ${canBack
-                   ? 'border-border text-text-secondary hover:bg-surface-elevated cursor-pointer'
-                   : 'border-border/20 text-text-muted/30 cursor-not-allowed'}">
-               &#9664;&#9664; Auto
-             </button>`}
-
-        <button data-action="step-fwd" ${!canFwd ? 'disabled' : ''}
-          class="px-3 py-1 rounded-lg border transition-colors
-            ${canFwd
-              ? 'border-border text-text-secondary hover:bg-surface-elevated cursor-pointer'
-              : 'border-border/20 text-text-muted/30 cursor-not-allowed'}">
-          Fwd &#9654;
-        </button>
-
-        <div class="w-px h-4 bg-border"></div>
-
-        <button data-action="live"
-          class="px-3 py-1 rounded-lg bg-gain/15 border border-gain/30 text-gain font-semibold
-                 hover:bg-gain/25 transition-colors cursor-pointer">
-          &#9679; Live
-        </button>
-
-        <div class="w-px h-4 bg-border"></div>
-
-        <button data-action="toggle-travel"
-          class="px-3 py-1 rounded-lg border transition-colors cursor-pointer
-            ${_travelOpen
-              ? 'bg-accent-secondary/15 border-accent-secondary text-accent-secondary'
-              : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated'}">
-          &#128197; Travel
-        </button>
-      </div>
-    `
-  }
-
-  // Travel panel (below controls)
-  if (travelEl) {
-    travelEl.innerHTML = _travelOpen ? `
-      <div class="border-t border-border px-4 py-3 flex flex-wrap items-center gap-3 text-xs">
-        <span class="text-text-muted">Jump to date:</span>
-        <input id="tw-date-input" type="date" value="${curVal}" min="${minVal}"
-          class="bg-surface-elevated border border-border rounded-lg px-2.5 py-1.5 text-sm text-text-primary
-                 outline-none focus:border-accent-primary transition-colors cursor-pointer" />
-        <button data-action="travel-go"
-          class="px-4 py-1.5 rounded-lg bg-accent-primary text-bg font-bold
-                 hover:bg-accent-primary/90 transition-colors cursor-pointer">
-          Go &#8594;
-        </button>
-        <span class="text-text-muted text-[10px]">
-          Past dates restore from snapshot history &middot; Future dates simulate forward
-          ${FINNHUB_API_KEY ? '&middot; Real prices for present' : '&middot; All prices are simulated'}
-        </span>
-        ${_travelError ? `<span class="text-loss w-full">${_travelError}</span>` : ''}
-      </div>
-    ` : ''
-  }
-}
-
-// ── Current stock price display ───────────────────────────────────────────────
-
-function _updateStockPrice() {
-  const el = document.getElementById('tw-stock-price')
+function _renderHeader() {
+  const el = document.getElementById('sim-header')
   if (!el) return
+  const stock = getStock(_selectedSym)
   const { price, prev } = getPrice(_selectedSym)
   const delta    = price - prev
   const deltaPct = prev ? (delta / prev) * 100 : 0
   const up       = delta >= 0
+  const risk     = stock?.risk ?? 'Medium'
+  const sent     = _getSentiment()
+
   el.innerHTML = `
-    <span class="font-mono font-bold text-text-primary text-lg leading-none">${pc(price)}</span>
-    <span class="text-sm font-bold ${up ? 'text-gain' : 'text-loss'}">
-      ${up ? '▲' : '▼'} ${up ? '+' : ''}${deltaPct.toFixed(2)}%
+    <span class="font-bold text-text-primary text-base">${_selectedSym}</span>
+    <span class="text-sm text-text-muted">${stock?.name ?? ''}</span>
+
+    <!-- Risk badge -->
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide ${_riskColor(risk)}">
+      ${risk} Risk
     </span>
-    <span class="text-xs text-text-muted">${up ? '+' : ''}${pc(delta)} this tick</span>
+
+    <!-- AI sentiment badge -->
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide
+      ${sent.bull ? 'bg-gain/10 border-gain/30 text-gain' : sent.label === 'NEUTRAL' ? 'bg-border/20 border-border text-text-muted' : 'bg-loss/10 border-loss/30 text-loss'}">
+      AI &mdash; ${sent.label} ${sent.pct}%
+    </span>
+
+    <div class="ml-auto flex items-baseline gap-2">
+      <span class="font-mono font-bold text-text-primary text-xl">${pc(price)}</span>
+      <span class="text-sm font-bold ${up ? 'text-gain' : 'text-loss'}">
+        ${up ? '▲' : '▼'} ${up ? '+' : ''}${deltaPct.toFixed(2)}%
+      </span>
+    </div>
   `
 }
 
-// ── Live price table (all stocks, tick-to-tick delta) ─────────────────────────
+// ── Controls (speed + stop, re-rendered on TM state change) ──────────────────
 
-function _updatePriceTable() {
-  const el = document.getElementById('tw-price-table')
-  if (!el) return
-  el.innerHTML = STOCKS.map(s => {
-    const { price, prev } = getPrice(s.symbol)
-    const delta    = price - prev
-    const deltaPct = prev ? (delta / prev) * 100 : 0
-    const up       = delta >= 0
-    const sel      = s.symbol === _selectedSym
-    return `
-      <div class="flex items-center justify-between px-4 py-1.5 border-l-2
-        ${sel
-          ? 'bg-accent-primary/10 border-accent-primary'
-          : up
-            ? 'bg-gain/15 border-gain'
-            : 'bg-loss/15 border-loss'}">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-bold text-text-primary w-12 shrink-0">${s.symbol}</span>
-          <span class="text-[10px] text-text-muted truncate max-w-[72px] hidden sm:block">${s.name.split(' ')[0]}</span>
-        </div>
-        <div class="text-right shrink-0">
-          <div class="text-xs font-mono font-semibold text-text-primary">${pc(price)}</div>
-          <div class="text-[10px] font-bold ${up ? 'text-gain' : 'text-loss'}">
-            ${up ? '▲ +' : '▼ '}${deltaPct.toFixed(2)}%
-          </div>
-        </div>
-      </div>
-    `
+function _renderControls() {
+  const speedBar = document.getElementById('sim-speed-bar')
+  const stopBtn  = document.getElementById('sim-stop-btn')
+  const startEl  = document.getElementById('sim-start-date')
+  if (!speedBar || !stopBtn) return
+
+  const { speed, mode, speeds, simDate, minDate } = getTimeMachineState()
+  const isLive   = mode === 'live'
+  const isPaused = mode === 'paused' || mode === 'rewinding'
+
+  // Start date label
+  if (startEl) {
+    startEl.textContent = minDate ? _fmtDate(minDate) : _fmtDate(simDate)
+  }
+
+  // End date default (one year from simDate)
+  const endInput = document.getElementById('sim-end-date')
+  if (endInput && !endInput.value) {
+    const d = new Date(simDate)
+    d.setFullYear(d.getFullYear() + 1)
+    endInput.value = _isoDate(d)
+  }
+
+  // Speed pills
+  speedBar.innerHTML = speeds.map(s => {
+    const active = speed === s && isLive
+    return `<button data-action="speed" data-speed="${s}"
+      class="px-2.5 py-1 rounded-lg border text-xs transition-colors cursor-pointer
+        ${active
+          ? 'bg-accent-primary text-bg border-accent-primary font-bold'
+          : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}">
+      ${s}&times;
+    </button>`
   }).join('')
+
+  // Stop / Resume button (big red square like the screenshot)
+  if (isPaused) {
+    stopBtn.innerHTML = `
+      <button data-action="live"
+        class="w-10 h-10 rounded-xl bg-gain/15 border border-gain/40 text-gain flex items-center justify-center
+               hover:bg-gain/25 transition-colors cursor-pointer text-sm font-bold" title="Resume live">
+        &#9654;
+      </button>`
+  } else {
+    stopBtn.innerHTML = `
+      <button data-action="pause"
+        class="w-10 h-10 rounded-xl bg-loss flex items-center justify-center
+               hover:bg-loss/80 transition-colors cursor-pointer" title="Pause simulation">
+        <span class="w-3 h-3 bg-white rounded-sm"></span>
+      </button>`
+  }
 }
 
-// ── Stats card ────────────────────────────────────────────────────────────────
+// ── Chart initialisation ──────────────────────────────────────────────────────
 
-function _updateStats() {
-  const el = document.getElementById('tw-stats')
-  if (!el) return
-  const { speed, mode, historySize } = getTimeMachineState()
-  const hist     = getHistory()
-  const last     = hist[hist.length - 1]
-  const first    = hist[0]
-  const nw       = last?.netWorth  ?? 10000
-  const nwStart  = first?.netWorth ?? 10000
-  const nwChg    = nw - nwStart
-  const nwChgPct = nwStart ? (nwChg / nwStart) * 100 : 0
-  const up       = nwChg >= 0
-  el.innerHTML = `
-    <div>
-      <div class="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Net Worth</div>
-      <div class="font-mono font-bold text-text-primary text-sm">${pc(nw)}</div>
-    </div>
-    <div>
-      <div class="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Return</div>
-      <div class="font-mono font-bold text-sm ${up ? 'text-gain' : 'text-loss'}">
-        ${up ? '+' : ''}${nwChgPct.toFixed(2)}%
-      </div>
-    </div>
-    <div>
-      <div class="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Speed</div>
-      <div class="font-mono font-bold text-accent-primary text-sm">
-        ${mode === 'live' ? speed + '&times;' : mode.charAt(0).toUpperCase() + mode.slice(1)}
-      </div>
-    </div>
-    <div>
-      <div class="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Ticks</div>
-      <div class="font-mono font-bold text-text-primary text-sm">${historySize}</div>
-    </div>
-  `
-}
+function _initCharts() {
+  const canvas  = document.getElementById('sim-chart')
+  const volCvs  = document.getElementById('sim-vol')
+  if (!canvas || !volCvs) return
 
-// ── Stock price history chart ─────────────────────────────────────────────────
-
-function _initChart() {
-  const canvas = document.getElementById('tw-chart')
-  if (!canvas) return
-
-  const initPrice = getPrice(_selectedSym).price
+  const chartOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+  }
 
   _chart = new Chart(canvas, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: ['Now'],
-      datasets: [{
-        label: _selectedSym,
-        data: [initPrice],
-        borderColor: '#00D4AA',
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        fill: true,
-        backgroundColor: 'rgba(0,212,170,0.07)',
-        tension: 0,
-        segment: {
-          borderColor: ctx => ctx.p1.parsed.y >= ctx.p0.parsed.y ? '#00D4AA' : '#EF4444',
+      labels: [],
+      datasets: [
+        // Dataset 0: wicks (thin, low → high)
+        {
+          data: [],
+          backgroundColor: [],
+          barThickness: 1,
+          order: 2,
         },
-      }],
+        // Dataset 1: bodies (open → close)
+        {
+          data: [],
+          backgroundColor: [],
+          barThickness: 7,
+          order: 1,
+        },
+      ],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
+      ...chartOpts,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => ` ${_selectedSym}: ${pc(ctx.raw)}`,
+            title: items => items[0]?.label ?? '',
+            label: ctx => {
+              if (ctx.datasetIndex !== 1) return null
+              const c = _candles[ctx.dataIndex]
+              if (!c) return null
+              return [
+                ` O: ${pc(c.open)}`,
+                ` H: ${pc(c.high)}`,
+                ` L: ${pc(c.low)}`,
+                ` C: ${pc(c.close)}`,
+              ]
+            },
+            filter: item => item.datasetIndex === 1,
           },
           backgroundColor: '#111827',
           borderColor: '#1F2937',
@@ -496,31 +372,79 @@ function _initChart() {
       },
       scales: {
         x: {
-          ticks: { color: '#6B7280', maxTicksLimit: 6, maxRotation: 0, font: { size: 10 } },
-          grid:  { color: 'rgba(31,41,55,0.4)' },
+          ticks: {
+            color: '#6B7280',
+            maxTicksLimit: 8,
+            maxRotation: 0,
+            font: { size: 10 },
+          },
+          grid: { color: 'rgba(55,65,81,0.3)' },
         },
         y: {
-          ticks:    { color: '#6B7280', callback: v => pc(v), font: { size: 10 } },
-          grid:     { color: 'rgba(31,41,55,0.4)' },
           position: 'right',
+          ticks: { color: '#6B7280', callback: v => pc(v), font: { size: 10 } },
+          grid:  { color: 'rgba(55,65,81,0.3)' },
+        },
+      },
+    },
+  })
+
+  _volChart = new Chart(volCvs, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: [],
+        barThickness: 7,
+      }],
+    },
+    options: {
+      ...chartOpts,
+      scales: {
+        x: {
+          display: false,
+          ticks: { maxTicksLimit: 0 },
+        },
+        y: {
+          position: 'right',
+          ticks: {
+            color: '#6B7280',
+            maxTicksLimit: 2,
+            font: { size: 9 },
+            callback: v => v >= 1_000_000 ? (v / 1_000_000).toFixed(0) + 'M' : v,
+          },
+          grid: { color: 'rgba(55,65,81,0.2)' },
         },
       },
     },
   })
 }
 
-function _updateChart() {
-  if (!_chart || !_liveHistory.length) return
+// ── Chart update ──────────────────────────────────────────────────────────────
 
-  const prev = _liveHistory.length >= 2 ? _liveHistory[_liveHistory.length - 2].price : _liveHistory[0].price
-  const last = _liveHistory[_liveHistory.length - 1].price
-  const up   = last >= prev
+function _updateCharts() {
+  if (!_chart || !_volChart || !_candles.length) return
 
-  _chart.data.labels              = _liveHistory.map(p => _fmtDate(p.date))
-  _chart.data.datasets[0].data    = _liveHistory.map(p => p.price)
-  _chart.data.datasets[0].label   = _selectedSym
-  _chart.data.datasets[0].backgroundColor = up ? 'rgba(0,212,170,0.07)' : 'rgba(239,68,68,0.07)'
+  const labels   = _candles.map(c => c.label)
+  const wickData = _candles.map(c => [c.low, c.high])
+  const bodyData = _candles.map(c => [Math.min(c.open, c.close), Math.max(c.open, c.close)])
+  const gains    = _candles.map(c => c.up ? 'rgba(0,212,170,0.85)' : 'rgba(239,68,68,0.85)')
+  const gainsWk  = _candles.map(c => c.up ? 'rgba(0,212,170,0.5)' : 'rgba(239,68,68,0.5)')
+  const volData  = _candles.map(c => c.volume)
+  const volColor = _candles.map(c => c.up ? 'rgba(0,212,170,0.45)' : 'rgba(239,68,68,0.45)')
+
+  _chart.data.labels                         = labels
+  _chart.data.datasets[0].data               = wickData
+  _chart.data.datasets[0].backgroundColor    = gainsWk
+  _chart.data.datasets[1].data               = bodyData
+  _chart.data.datasets[1].backgroundColor    = gains
   _chart.update('none')
+
+  _volChart.data.labels                      = labels
+  _volChart.data.datasets[0].data            = volData
+  _volChart.data.datasets[0].backgroundColor = volColor
+  _volChart.update('none')
 }
 
 // ── Event delegation ──────────────────────────────────────────────────────────
@@ -530,57 +454,41 @@ function _handleClick(e) {
   if (!btn || btn.disabled) return
   const { action, speed } = btn.dataset
   switch (action) {
-    case 'speed':         setSpeed(Number(speed)); break
-    case 'pause':         pauseTime();             break
-    case 'rewind':        startRewind();           break
-    case 'stop-rewind':   stopRewind();            break
-    case 'start-rewind':  startRewind();           break
-    case 'step-back':     stepBack();              break
-    case 'step-fwd':      stepForward();           break
-    case 'live':          returnToLive();          break
-    case 'toggle-travel': _toggleTravel();         break
-    case 'travel-go':     _doTravel();             break
+    case 'speed':      setSpeed(Number(speed)); break
+    case 'pause':      pauseTime();             break
+    case 'live':       returnToLive();          break
+    case 'step-back':  stepBack();              break
+    case 'step-fwd':   stepForward();           break
+    case 'travel-go':  _doTravel();             break
   }
 }
 
 function _handleKey(e) {
-  if (e.key === 'Enter' && e.target.id === 'tw-date-input') _doTravel()
+  if (e.key === 'Enter' && e.target.id === 'sim-end-date') _doTravel()
 }
 
 function _handleChange(e) {
-  if (e.target.id === 'tw-sym') {
+  if (e.target.id === 'sim-sym') {
     _selectedSym = e.target.value
-    _liveHistory = []   // clear so chart starts fresh for the new stock
-    _updateChart()
-    _updateStockPrice()
-    _updatePriceTable()
+    _candles     = []
+    _prevClose   = 0
+    _renderHeader()
+    _updateCharts()
   }
 }
 
 // ── Travel ────────────────────────────────────────────────────────────────────
 
-function _toggleTravel() {
-  _travelOpen  = !_travelOpen
-  _travelError = ''
-  _renderControls()
-}
-
 async function _doTravel() {
-  const input = document.getElementById('tw-date-input')
+  const input = document.getElementById('sim-end-date')
   if (!input?.value) return
-  const savedVal = input.value
-  const [y, m, d] = savedVal.split('-').map(Number)
-  _travelError = ''
-  _renderControls()
-  // Restore input after re-render wipes it
-  const inp = document.getElementById('tw-date-input')
-  if (inp) inp.value = savedVal
+  const [y, m, d] = input.value.split('-').map(Number)
+  const errEl = document.getElementById('sim-travel-error')
+  if (errEl) { errEl.textContent = ''; errEl.classList.add('hidden') }
 
   const err = await travelToDate(y, m, d)
-  if (err) {
-    _travelError = err
-    _renderControls()
-    const inp2 = document.getElementById('tw-date-input')
-    if (inp2) inp2.value = savedVal
+  if (err && errEl) {
+    errEl.textContent = err
+    errEl.classList.remove('hidden')
   }
 }

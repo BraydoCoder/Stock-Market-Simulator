@@ -468,3 +468,18 @@
 .midnight nav a[href="#dashboard"] {
   text-shadow: 0 0 10px rgba(56,189,248,0.7), 0 0 25px rgba(56,189,248,0.3);
 }
+
+/* ─── Ticker banner ─────────────────────────────────────────────────────────── */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  animation: ticker-scroll 60s linear infinite;
+  will-change: transform;
+}
+#ticker-banner:hover .ticker-track {
+  animation-play-state: paused;
+}
