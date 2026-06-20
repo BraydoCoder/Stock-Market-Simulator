@@ -93,7 +93,7 @@ export const BADGES = [
   {
     id: 'gain_50pct',
     name: 'Up 50%',
-    desc: 'Double half your starting balance.',
+    desc: 'Grow your portfolio by 50% — reach PC$75,000.',
     icon: '+50%',
     xp: 1000,
     check: (s) => {
@@ -104,7 +104,7 @@ export const BADGES = [
   {
     id: 'gain_100pct',
     name: 'Doubled Up',
-    desc: 'Double your entire starting balance.',
+    desc: 'Double your starting balance — reach PC$100,000.',
     icon: '2X',
     xp: 2500,
     check: (s) => {
@@ -246,11 +246,11 @@ export const BADGES = [
   {
     id: 'big_spender',
     name: 'Big Spender',
-    desc: 'Make a single trade worth over PC$5,000.',
+    desc: 'Make a single trade worth over PC$25,000.',
     icon: 'BIG',
     xp: 150,
     secret: true,
-    check: (s) => s.transactions.some(t => t.total >= 5000),
+    check: (s) => s.transactions.some(t => t.total >= 25000),
   },
   {
     id: 'perfect_timing',
