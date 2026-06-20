@@ -477,7 +477,7 @@
 .ticker-track {
   display: inline-flex;
   align-items: center;
-  animation: ticker-scroll 60s linear infinite;
+  animation: ticker-scroll 120s linear infinite;
   will-change: transform;
 }
 #ticker-banner:hover .ticker-track {
