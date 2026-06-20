@@ -62,10 +62,12 @@ function filteredStocks() {
     })
     .sort((a, b) => {
       let va, vb
+      const riskOrder = { Low: 0, Medium: 1, High: 2 }
       if (sortKey === 'symbol')  { va = a.symbol; vb = b.symbol }
       else if (sortKey === 'name')   { va = a.name;   vb = b.name }
       else if (sortKey === 'price')  { va = getPrice(a.symbol).price;     vb = getPrice(b.symbol).price }
       else if (sortKey === 'change') { va = getPrice(a.symbol).changePct; vb = getPrice(b.symbol).changePct }
+      else if (sortKey === 'risk')   { va = riskOrder[a.risk] ?? 1; vb = riskOrder[b.risk] ?? 1 }
       else { va = a[sortKey] ?? 0; vb = b[sortKey] ?? 0 }
       if (va < vb) return -sortDir
       if (va > vb) return sortDir
@@ -169,7 +171,7 @@ function tableView(stocks, holdings) {
               ${th('symbol', 'Symbol', 'text-left px-5 py-3')}
               ${th('name', 'Company', 'text-left px-3 py-3 hidden sm:table-cell')}
               <th class="text-left px-3 py-3 hidden md:table-cell">Sector</th>
-              <th class="text-left px-3 py-3 hidden lg:table-cell">Risk</th>
+              ${th('risk', 'Risk', 'text-left px-3 py-3 hidden lg:table-cell')}
               ${th('price', 'Price', 'text-right px-3 py-3')}
               ${th('change', 'Change', 'text-right px-3 py-3')}
               <th class="text-right px-3 py-3 hidden sm:table-cell">Watch</th>
