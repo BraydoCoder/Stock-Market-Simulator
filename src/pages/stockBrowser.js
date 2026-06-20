@@ -180,21 +180,21 @@ function cardView(stocks, holdings) {
         return `
           <div class="bg-surface border border-border rounded-xl p-4 hover:border-accent-primary transition-colors cursor-pointer group"
             data-symbol="${s.symbol}">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex items-center gap-2">
-                ${logoImg(s, 'w-7 h-7')}
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-2.5">
+                ${logoImg(s, 'w-8 h-8')}
                 <div>
-                  <div class="font-mono font-bold text-sm text-text-primary group-hover:text-accent-primary">${s.symbol}</div>
-                  <div class="text-[10px] text-text-muted">${s.sector}</div>
+                  <div class="font-mono font-bold text-base text-text-primary group-hover:text-accent-primary leading-none">${s.symbol}</div>
+                  <div class="text-[10px] text-text-muted mt-0.5">${s.sector}</div>
                 </div>
               </div>
-              ${owned ? `<div class="text-[9px] text-accent-secondary font-semibold">Owned</div>` : ''}
+              ${owned ? `<div class="text-[9px] text-accent-secondary font-bold bg-accent-secondary/10 px-1.5 py-0.5 rounded">Owned</div>` : ''}
             </div>
-            <div class="text-base font-bold font-mono price-cell text-text-primary tabular-nums" data-sym="${s.symbol}">${pc(p.price)}</div>
-            <div class="flex items-center gap-1 mt-1">
+            <div class="text-[10px] text-text-muted truncate mb-2">${s.name}</div>
+            <div class="text-lg font-bold font-mono price-cell text-text-primary tabular-nums" data-sym="${s.symbol}">${pc(p.price)}</div>
+            <div class="flex items-center gap-1 mt-0.5">
               <span class="text-xs ${gainClass(p.changePct)} tabular-nums change-cell" data-sym="${s.symbol}">${pct(p.changePct)}</span>
             </div>
-            <div class="text-[10px] text-text-muted mt-0.5 truncate">${s.name}</div>
             <div class="flex gap-1.5 mt-3">
               <button data-symbol="${s.symbol}" class="trade-btn flex-1 py-1.5 rounded-lg bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-[10px] font-semibold hover:bg-accent-primary hover:text-bg transition-colors">
                 Trade
@@ -243,7 +243,10 @@ function stockRow(s, holdings) {
           </div>
         </div>
       </td>
-      <td class="px-3 py-3.5 text-text-secondary hidden sm:table-cell">${s.name}</td>
+      <td class="px-3 py-3.5 hidden sm:table-cell">
+        <div class="font-mono font-bold text-xs text-accent-primary">${s.symbol}</div>
+        <div class="text-text-secondary text-xs mt-0.5">${s.name}</div>
+      </td>
       <td class="px-3 py-3.5 hidden md:table-cell">
         <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-muted">${s.sector}</span>
       </td>
