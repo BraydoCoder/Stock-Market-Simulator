@@ -17,12 +17,15 @@
 
 import { STOCKS } from '../data/stocks.js'
 import { FINNHUB_API_KEY } from '../config.js'
-import { getState, deactivatePriceAlert, addNotification, snapshotNetWorth } from '../state/store.js'
+import { getState, deactivatePriceAlert, addNotification, snapshotNetWorth, adjustBalance, recordTx, hasBadge, unlockBadge, awardXP } from '../state/store.js'
 import { toast } from '../components/toast.js'
 import { pc } from '../utils/format.js'
 
 // In-memory map: symbol → { price, change, changePct, prev }
 const store = new Map()
+
+// Dividend payout counter — triggers every 100 ticks (~5 min of sim time)
+let dividendTick = 0
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -99,6 +102,8 @@ export function tick() {
 
   checkPriceAlerts()
   checkOrdersAndSnapshot()
+  dividendTick++
+  if (dividendTick % 100 === 0) payDividends()
   window.dispatchEvent(new Event('prices-updated'))
 }
 
@@ -217,6 +222,29 @@ export function restorePrices(snapshot) {
 
 function round2(n) { return Math.round(n * 100) / 100 }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+function payDividends() {
+  const { holdings } = getState()
+  if (!Object.keys(holdings).length) return
+  let totalPaid = 0
+  const stockMap = new Map(STOCKS.map(s => [s.symbol, s]))
+  Object.entries(holdings).forEach(([symbol, h]) => {
+    const stock = stockMap.get(symbol)
+    if (!stock?.dividendYield) return
+    const price   = getPrice(symbol).price
+    const payment = round2(h.shares * price * (stock.dividendYield / 4 / 100))
+    if (payment < 0.01) return
+    adjustBalance(payment)
+    recordTx({ type: 'dividend', symbol, amount: payment, ts: Date.now(), shares: h.shares, price })
+    toast(`💰 Dividend: +${pc(payment)} from ${symbol}`, 'success', 4000)
+    addNotification({ type: 'dividend', message: `Dividend payment of ${pc(payment)} from ${symbol}` })
+    totalPaid += payment
+  })
+  if (totalPaid > 0 && !hasBadge('first_dividend')) {
+    unlockBadge('first_dividend')
+    awardXP(50)
+  }
+}
 
 function checkPriceAlerts() {
   const state = getState()

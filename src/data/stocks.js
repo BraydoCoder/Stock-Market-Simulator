@@ -1,4 +1,22 @@
+// Annual dividend yield % for income stocks. Spread onto matching entries at export time.
+const _DIVIDENDS = {
+  AAPL: 0.5,  MSFT: 0.8,  JNJ: 2.9,   PFE: 5.5,   ABBV: 4.0,  ABT: 1.8,
+  WMT: 1.4,   PG: 2.4,    KO: 3.1,    HSY: 2.8,   GIS: 3.4,   TSN: 3.2,
+  KHC: 4.5,   CALM: 2.5,  MCD: 2.3,   YUM: 1.9,
+  XOM: 3.4,   CVX: 4.0,   ENB: 7.8,   TRP: 7.5,
+  T: 6.5,     VZ: 6.8,    MO: 8.5,    PM: 5.5,
+  IBM: 4.5,
+  LMT: 2.6,   RTX: 2.5,   NOC: 1.7,   GD: 2.0,
+  UPS: 4.2,   FDX: 2.1,   MMM: 5.8,
+  O: 5.6,     WPC: 6.2,   MPW: 14.0,  OHI: 7.2,   NHI: 5.1,  GLPI: 6.0,
+  ARCC: 9.5,  MAIN: 7.8,  HTGC: 9.2,  ORCC: 9.8,  PSEC: 11.5, GBDC: 10.2,
+  NTR: 3.5,   MOS: 1.8,
+}
+
 const _REAL_STOCKS = [
+  // Consumer — tobacco (dividend leaders)
+  { symbol: 'MO',    name: 'Altria Group Inc.',              sector: 'Consumer',      basePrice: 43.60,   domain: 'altria.com',             risk: 'Low'    },
+  { symbol: 'PM',    name: 'Philip Morris International',    sector: 'Consumer',      basePrice: 98.40,   domain: 'pmi.com',                risk: 'Low'    },
   // Technology — mega cap
   { symbol: 'AAPL',  name: 'Apple Inc.',                   sector: 'Technology',    basePrice: 189.52,  domain: 'apple.com',              risk: 'Low'    },
   { symbol: 'MSFT',  name: 'Microsoft Corp.',               sector: 'Technology',    basePrice: 378.90,  domain: 'microsoft.com',          risk: 'Low'    },
@@ -1337,6 +1355,7 @@ const _REAL_STOCKS = [
 ]
 
 export const STOCKS = [...new Map(_REAL_STOCKS.map(s => [s.symbol, s])).values()]
+  .map(s => _DIVIDENDS[s.symbol] ? { ...s, dividendYield: _DIVIDENDS[s.symbol] } : s)
 export const SECTORS = ['All', ...new Set(STOCKS.map(s => s.sector))]
 
 export function getStock(symbol) {

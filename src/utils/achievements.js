@@ -266,6 +266,22 @@ export const BADGES = [
       return gainPct >= 20
     }),
   },
+  {
+    id: 'first_dividend',
+    name: 'Dividend Collector',
+    desc: 'Receive your first dividend payment from a stock you hold.',
+    icon: '💰',
+    xp: 50,
+    check: (s) => s.transactions.some(t => t.type === 'dividend'),
+  },
+  {
+    id: 'dividend_streak',
+    name: 'Income Investor',
+    desc: 'Receive dividend payments from 3 or more different stocks.',
+    icon: '💵',
+    xp: 150,
+    check: (s) => new Set(s.transactions.filter(t => t.type === 'dividend').map(t => t.symbol)).size >= 3,
+  },
 ]
 
 export function checkAchievements() {

@@ -27,14 +27,19 @@ function sectorBadge(sector) {
   return `<span class="text-[10px] font-medium px-2 py-0.5 rounded-full border ${cls}">${sector}</span>`
 }
 
-let filterSector = 'All'
-let searchQuery = ''
-let sortKey = 'symbol'
-let sortDir = 1
-let viewMode = 'table'   // 'table' | 'card'
-let page = 0
-let priceListener = null
-let container = null
+let filterSector    = 'All'
+let filterRisk      = 'All'        // 'All' | 'Low' | 'Medium' | 'High'
+let filterChange    = 'All'        // 'All' | 'Gainers' | 'Losers'
+let filterDividends = false
+let minPrice        = ''
+let maxPrice        = ''
+let searchQuery  = ''
+let sortKey      = 'symbol'
+let sortDir      = 1
+let viewMode     = 'table'   // 'table' | 'card'
+let page         = 0
+let priceListener  = null
+let container      = null
 let searchDebounce = null
 
 export function mountStockBrowser(el) {
@@ -53,26 +58,35 @@ export function unmountStockBrowser() {
 }
 
 function filteredStocks() {
-  return STOCKS
-    .filter(s => {
-      const matchSector = filterSector === 'All' || s.sector === filterSector
-      const q = searchQuery.toLowerCase()
-      const matchSearch = !q || s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
-      return matchSector && matchSearch
-    })
-    .sort((a, b) => {
-      let va, vb
-      const riskOrder = { Low: 0, Medium: 1, High: 2 }
-      if (sortKey === 'symbol')  { va = a.symbol; vb = b.symbol }
-      else if (sortKey === 'name')   { va = a.name;   vb = b.name }
-      else if (sortKey === 'price')  { va = getPrice(a.symbol).price;     vb = getPrice(b.symbol).price }
-      else if (sortKey === 'change') { va = getPrice(a.symbol).changePct; vb = getPrice(b.symbol).changePct }
-      else if (sortKey === 'risk')   { va = riskOrder[a.risk] ?? 1; vb = riskOrder[b.risk] ?? 1 }
-      else { va = a[sortKey] ?? 0; vb = b[sortKey] ?? 0 }
-      if (va < vb) return -sortDir
-      if (va > vb) return sortDir
-      return 0
-    })
+  let stocks = STOCKS.filter(s => {
+    const matchSector = filterSector === 'All' || s.sector === filterSector
+    const q = searchQuery.toLowerCase()
+    const matchSearch = !q || s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+    return matchSector && matchSearch
+  })
+  if (filterRisk !== 'All') stocks = stocks.filter(s => s.risk === filterRisk)
+  if (filterChange === 'Gainers') stocks = stocks.filter(s => getPrice(s.symbol).changePct > 0)
+  if (filterChange === 'Losers')  stocks = stocks.filter(s => getPrice(s.symbol).changePct < 0)
+  if (filterDividends) stocks = stocks.filter(s => s.dividendYield)
+  if (minPrice !== '') stocks = stocks.filter(s => getPrice(s.symbol).price >= parseFloat(minPrice))
+  if (maxPrice !== '') stocks = stocks.filter(s => getPrice(s.symbol).price <= parseFloat(maxPrice))
+  return stocks.sort((a, b) => {
+    let va, vb
+    const riskOrder = { Low: 0, Medium: 1, High: 2 }
+    if (sortKey === 'symbol')      { va = a.symbol; vb = b.symbol }
+    else if (sortKey === 'name')   { va = a.name;   vb = b.name }
+    else if (sortKey === 'price')  { va = getPrice(a.symbol).price;     vb = getPrice(b.symbol).price }
+    else if (sortKey === 'change') { va = getPrice(a.symbol).changePct; vb = getPrice(b.symbol).changePct }
+    else if (sortKey === 'risk')   { va = riskOrder[a.risk] ?? 1; vb = riskOrder[b.risk] ?? 1 }
+    else { va = a[sortKey] ?? 0; vb = b[sortKey] ?? 0 }
+    if (va < vb) return -sortDir
+    if (va > vb) return sortDir
+    return 0
+  })
+}
+
+function hasActiveFilters() {
+  return filterRisk !== 'All' || filterChange !== 'All' || filterDividends || minPrice !== '' || maxPrice !== ''
 }
 
 function render() {
@@ -133,6 +147,46 @@ function render() {
             ${s}
           </button>
         `).join('')}
+      </div>
+
+      <!-- Advanced filters -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-[10px] text-text-muted uppercase tracking-wide font-medium shrink-0">Risk:</span>
+        ${['All','Low','Medium','High'].map(r => `
+          <button data-risk="${r}" class="risk-btn px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
+            ${filterRisk === r
+              ? 'bg-accent-primary text-bg border-accent-primary'
+              : 'bg-surface border-border text-text-muted hover:text-text-primary'}">
+            ${r}
+          </button>
+        `).join('')}
+        <span class="text-border mx-0.5">|</span>
+        ${['All','Gainers','Losers'].map(c => `
+          <button data-change="${c}" class="change-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
+            ${filterChange === c
+              ? 'bg-accent-primary text-bg border-accent-primary'
+              : 'bg-surface border-border text-text-muted hover:text-text-primary'}">
+            ${c === 'Gainers' ? '▲ ' : c === 'Losers' ? '▼ ' : ''}${c}
+          </button>
+        `).join('')}
+        <span class="text-border mx-0.5">|</span>
+        <button data-dividends="toggle" class="divs-btn px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
+          ${filterDividends
+            ? 'bg-accent-primary text-bg border-accent-primary'
+            : 'bg-surface border-border text-text-muted hover:text-text-primary'}">
+          💰 Dividends
+        </button>
+        <span class="text-border mx-0.5">|</span>
+        <span class="text-[10px] text-text-muted shrink-0">Price:</span>
+        <input type="number" id="min-price" placeholder="Min $" value="${minPrice}"
+          class="w-20 bg-surface border border-border rounded-lg px-2 py-1 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-colors" />
+        <input type="number" id="max-price" placeholder="Max $" value="${maxPrice}"
+          class="w-20 bg-surface border border-border rounded-lg px-2 py-1 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-colors" />
+        ${hasActiveFilters() ? `
+          <button id="clear-filters" class="ml-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-loss/40 text-loss bg-loss/5 hover:bg-loss/10 transition-colors">
+            ✕ Clear
+          </button>
+        ` : ''}
       </div>
 
       <!-- Stock list -->
@@ -392,4 +446,29 @@ function bindEvents() {
       })
     })
   }
+
+  // Risk filter buttons
+  container.querySelectorAll('.risk-btn').forEach(btn => {
+    btn.addEventListener('click', () => { filterRisk = btn.dataset.risk; page = 0; render() })
+  })
+
+  // Gainers / Losers filter
+  container.querySelectorAll('.change-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => { filterChange = btn.dataset.change; page = 0; render() })
+  })
+
+  // Dividends toggle
+  container.querySelector('[data-dividends]')?.addEventListener('click', () => {
+    filterDividends = !filterDividends; page = 0; render()
+  })
+
+  // Price range inputs
+  container.querySelector('#min-price')?.addEventListener('input', (e) => { minPrice = e.target.value; page = 0; render() })
+  container.querySelector('#max-price')?.addEventListener('input', (e) => { maxPrice = e.target.value; page = 0; render() })
+
+  // Clear filters
+  container.querySelector('#clear-filters')?.addEventListener('click', () => {
+    filterRisk = 'All'; filterChange = 'All'; filterDividends = false; minPrice = ''; maxPrice = ''
+    page = 0; render()
+  })
 }

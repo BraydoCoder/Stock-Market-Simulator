@@ -29,6 +29,7 @@ import { mountHelp,        unmountHelp         } from './pages/help.js'
 import { mountNews,        unmountNews         } from './pages/news.js'
 import { mountLearn,       unmountLearn        } from './pages/learn.js'
 import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMode.js'
+import { mountHeatMap,        unmountHeatMap        } from './pages/heatMap.js'
 import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
 import { initTicker } from './components/ticker.js'
@@ -62,6 +63,7 @@ function getRoute() {
   if (hash.startsWith('#learn'))         return { name: 'learn' }
   if (hash.startsWith('#news'))          return { name: 'news' }
   if (hash.startsWith('#simulation'))   return { name: 'simulation' }
+  if (hash.startsWith('#heatmap'))      return { name: 'heatmap' }
   return { name: 'dashboard' }
 }
 
@@ -85,6 +87,7 @@ function unmountCurrent() {
     case 'help':         unmountHelp();         break
     case 'learn':        unmountLearn();        break
     case 'simulation':  unmountSimulationMode(); break
+    case 'heatmap':     unmountHeatMap();       break
     case 'auth':         unmountAuth();         break
     case 'welcome':      unmountWelcome();      break
   }
@@ -115,6 +118,7 @@ function mount(route) {
     case 'help':         mountHelp(main);                              break
     case 'learn':        mountLearn(main);                             break
     case 'simulation':  mountSimulationMode(main);                    break
+    case 'heatmap':     mountHeatMap(main);                           break
   }
 }
 

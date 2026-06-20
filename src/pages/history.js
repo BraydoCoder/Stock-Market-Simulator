@@ -4,7 +4,7 @@ import { pc, gainClass } from '../utils/format.js'
 
 let container = null
 let unsub = null
-let filterType = 'all'   // 'all' | 'buy' | 'sell'
+let filterType = 'all'   // 'all' | 'buy' | 'sell' | 'dividend'
 let searchQuery = ''
 let sortDir = -1          // -1 = newest first
 
@@ -61,10 +61,10 @@ function render() {
           class="flex-1 max-w-xs bg-surface border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary transition-colors" />
 
         <div class="flex gap-1 bg-surface-elevated rounded-lg p-1 self-start">
-          ${['all','buy','sell'].map(t => `
-            <button data-filter="${t}" class="filter-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors
-              ${filterType === t ? 'bg-surface text-text-primary shadow' : 'text-text-muted hover:text-text-primary'}">
-              ${t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1) + 's'}
+          ${[['all','All'],['buy','Buys'],['sell','Sells'],['dividend','💰 Divs']].map(([v,l]) => `
+            <button data-filter="${v}" class="filter-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+              ${filterType === v ? 'bg-surface text-text-primary shadow' : 'text-text-muted hover:text-text-primary'}">
+              ${l}
             </button>
           `).join('')}
         </div>
@@ -112,11 +112,36 @@ function txnRow(t) {
   const date = new Date(t.ts)
   const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const isDividend = t.type === 'dividend'
   const isBuy = t.type === 'buy'
   const pl = t.realizedGain ?? null
   const sharesStr = (t.qty ?? t.shares ?? 0) % 1 === 0
     ? String(t.qty ?? t.shares ?? 0)
     : (t.qty ?? t.shares ?? 0).toFixed(4)
+
+  if (isDividend) {
+    return `
+      <tr class="hover:bg-surface-elevated/50 transition-colors">
+        <td class="px-5 py-3 text-text-muted text-xs whitespace-nowrap">
+          <div>${dateStr}</div>
+          <div class="text-[10px]">${timeStr}</div>
+        </td>
+        <td class="px-3 py-3">
+          <a href="#stock-${t.symbol}" class="font-mono font-bold text-text-primary hover:text-accent-primary transition-colors">${t.symbol}</a>
+        </td>
+        <td class="px-3 py-3 hidden sm:table-cell">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent-secondary/10 text-accent-secondary">
+            💰 DIV
+          </span>
+        </td>
+        <td class="px-3 py-3 text-right font-mono text-text-muted tabular-nums">—</td>
+        <td class="px-3 py-3 text-right font-mono text-text-secondary tabular-nums">${pc(t.price ?? 0)}</td>
+        <td class="px-3 py-3 text-right text-[10px] text-text-muted tabular-nums hidden md:table-cell">—</td>
+        <td class="px-5 py-3 text-right font-mono font-bold tabular-nums text-gain">+${pc(t.amount ?? 0)}</td>
+        <td class="px-5 py-3 text-right text-xs tabular-nums hidden md:table-cell text-text-muted">—</td>
+      </tr>
+    `
+  }
 
   return `
     <tr class="hover:bg-surface-elevated/50 transition-colors">
