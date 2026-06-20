@@ -45,9 +45,8 @@ export function renderNavbar() {
         <div class="flex items-center gap-0.5 overflow-x-auto">
           ${link('#dashboard',    t('Dashboard'))}
           ${link('#stocks',       t('Stocks'))}
-          ${link('#portfolio',    t('Portfolio'))}
-          ${link('#history',      t('History'))}
-          ${link('#quests', t('Quests'))}
+          ${link('#news',         t('News'))}
+          ${link('#quests',       t('Quests'))}
           ${link('#leaderboard',  t('Leaderboard'))}
           ${link('#learn',        t('Learn'))}
           ${link('#simulation',   t('Time Warp'))}

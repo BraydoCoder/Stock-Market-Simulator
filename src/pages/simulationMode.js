@@ -74,6 +74,7 @@ function _scheduleUpdate() {
     _renderHeader()
     _updateCharts()
     _renderControls()
+    _renderAIPrediction()
   })
 }
 
@@ -213,11 +214,17 @@ function _renderPage() {
       <!-- Travel error -->
       <div id="sim-travel-error" class="hidden text-loss text-sm px-1"></div>
 
+      <!-- AI Prediction panel -->
+      <div id="sim-ai-panel" class="bg-surface border border-border rounded-2xl overflow-hidden">
+        <!-- populated by _renderAIPrediction() -->
+      </div>
+
     </div>
   `
 
   _renderHeader()
   _renderControls()
+  _renderAIPrediction()
 }
 
 // ── Header (stock info, risk, AI, price) ──────────────────────────────────────
@@ -461,6 +468,216 @@ function _selectSym(sym) {
   _closeDropdown()
   _renderHeader()
   _updateCharts()
+}
+
+// ── AI Prediction ─────────────────────────────────────────────────────────────
+
+function _aiHash(s, n) {
+  let h = 0x811c9dc5
+  const key = `${s}:${n}:${Math.floor(Date.now() / 60000)}`
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h / 0xFFFFFFFF
+}
+
+function _computeAI(sym, history) {
+  const stock     = getStock(sym)
+  const risk      = stock?.risk ?? 'Medium'
+  const prices    = history.map(h => h.price)
+  const n         = prices.length
+
+  // Trend from recent slope
+  let momentum = 0
+  if (n >= 5) {
+    const slice = prices.slice(-10)
+    const rises = slice.filter((p, i) => i > 0 && p > slice[i - 1]).length
+    momentum = (rises / (slice.length - 1)) - 0.5  // -0.5 to +0.5
+  }
+
+  // Volatility (std dev relative to mean)
+  let volatility = 0
+  if (n >= 3) {
+    const mean = prices.reduce((s, v) => s + v, 0) / prices.length
+    const variance = prices.reduce((s, v) => s + (v - mean) ** 2, 0) / prices.length
+    volatility = Math.sqrt(variance) / mean
+  }
+
+  // Combine signals
+  const seed = _aiHash(sym, 'dir')
+  const noise = (seed - 0.5) * 0.15
+  const score = momentum + noise
+
+  const direction = score > 0.05 ? 'UP' : score < -0.05 ? 'DOWN' : 'SIDEWAYS'
+
+  // Confidence based on strength of signal + volatility penalty
+  const rawConf = Math.min(0.95, Math.max(0.35, 0.55 + Math.abs(score) * 2 - volatility * 0.8))
+  const confidence = Math.round(rawConf * 100)
+
+  // Target price range
+  const currentPrice = n > 0 ? prices[n - 1] : (getPrice(sym).price)
+  const riskMultiplier = risk === 'High' ? 0.07 : risk === 'Low' ? 0.03 : 0.05
+  const targetMult = direction === 'UP' ? 1 + riskMultiplier : direction === 'DOWN' ? 1 - riskMultiplier : 1 + riskMultiplier * 0.3
+  const targetPrice = currentPrice * targetMult
+
+  // Support / resistance (rough estimate)
+  const minP = n > 3 ? Math.min(...prices.slice(-20)) : currentPrice * 0.95
+  const maxP = n > 3 ? Math.max(...prices.slice(-20)) : currentPrice * 1.05
+
+  // Key factors
+  const factors = []
+  if (momentum > 0.1)   factors.push({ text: 'Strong upward price momentum over recent sessions', pos: true })
+  else if (momentum > 0) factors.push({ text: 'Mild bullish momentum with above-average up days', pos: true })
+  else if (momentum < -0.1) factors.push({ text: 'Persistent selling pressure across recent ticks', pos: false })
+  else if (momentum < 0) factors.push({ text: 'Slight bearish drift — sellers outnumber buyers recently', pos: false })
+  else factors.push({ text: 'Price action is consolidating in a tight range', pos: null })
+
+  if (volatility > 0.03) factors.push({ text: `High volatility (${(volatility * 100).toFixed(1)}%) increases risk on both sides`, pos: null })
+  else if (volatility > 0.01) factors.push({ text: `Moderate volatility — price swings are manageable`, pos: true })
+  else factors.push({ text: `Low volatility — stable price environment`, pos: true })
+
+  if (risk === 'High')        factors.push({ text: `${sym} carries High risk — larger moves are common`, pos: false })
+  else if (risk === 'Low')    factors.push({ text: `${sym} is a Low risk stock — suitable for conservative positions`, pos: true })
+  else                        factors.push({ text: `Medium risk profile — balanced opportunity and downside`, pos: null })
+
+  const extraSeed = _aiHash(sym, 'factor4')
+  const extraFactors = [
+    { text: 'Institutional accumulation detected in recent volume patterns', pos: true },
+    { text: 'Sector rotation favoring this sector in the current macro environment', pos: true },
+    { text: 'RSI approaching overbought territory — potential pullback ahead', pos: false },
+    { text: 'Moving average crossover suggests trend continuation', pos: true },
+    { text: 'Earnings catalyst expected — options market pricing elevated IV', pos: null },
+    { text: 'Macro headwinds from rising rates may compress valuation multiples', pos: false },
+    { text: 'Analyst consensus revised upward across three major brokerages', pos: true },
+    { text: 'Short interest declining — short squeeze potential increasing', pos: true },
+  ]
+  factors.push(extraFactors[Math.floor(extraSeed * extraFactors.length)])
+
+  // Summary
+  const summaries = {
+    UP: [
+      `${sym} is showing positive momentum backed by technical signals. The model targets ${pc(targetPrice)} in the near term, with key support at ${pc(minP)}. Risk-adjusted positioning is recommended given current ${risk.toLowerCase()} risk.`,
+      `Bullish case for ${sym} remains intact. Price action suggests continued strength, with a model target of ${pc(targetPrice)}. Stop-loss levels near ${pc(minP)} offer risk management.`,
+    ],
+    DOWN: [
+      `${sym} is exhibiting weakness with downward pressure building. The model projects a near-term move toward ${pc(targetPrice)}. Resistance at ${pc(maxP)} could cap any short-term bounce.`,
+      `Bearish signals dominate the ${sym} chart. The model sees risk of a move to ${pc(targetPrice)} unless the price reclaims ${pc(maxP)}.`,
+    ],
+    SIDEWAYS: [
+      `${sym} is in a consolidation phase. The model expects a range-bound move between ${pc(minP)} and ${pc(maxP)}. A breakout in either direction could trigger a significant move.`,
+      `No clear trend for ${sym} — the model favors patience. Watch for a decisive break above ${pc(maxP)} or below ${pc(minP)} for a directional trade.`,
+    ],
+  }
+  const summaryList = summaries[direction]
+  const summary = summaryList[Math.floor(_aiHash(sym, 'sum') * summaryList.length)]
+
+  return { direction, confidence, targetPrice, minP, maxP, factors, summary, volatility, risk }
+}
+
+function _renderAIPrediction() {
+  const el = document.getElementById('sim-ai-panel')
+  if (!el) return
+  const ai = _computeAI(_selectedSym, _liveHistory)
+
+  const dirColor = ai.direction === 'UP'
+    ? 'text-gain border-gain/30 bg-gain/10'
+    : ai.direction === 'DOWN'
+      ? 'text-loss border-loss/30 bg-loss/10'
+      : 'text-warning border-warning/30 bg-warning/10'
+  const dirArrow = ai.direction === 'UP' ? '▲' : ai.direction === 'DOWN' ? '▼' : '▶'
+
+  const confColor = ai.confidence >= 75 ? 'bg-gain' : ai.confidence >= 55 ? 'bg-warning' : 'bg-loss'
+
+  el.innerHTML = `
+    <div class="px-5 py-4 border-b border-border flex items-center gap-2">
+      <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-accent-primary/10 text-accent-primary uppercase tracking-wide">AI</span>
+      <h2 class="font-semibold text-text-primary">Price Prediction — ${_selectedSym}</h2>
+      <span class="ml-auto text-[10px] text-text-muted">Updates with each price tick</span>
+    </div>
+
+    <div class="p-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Direction + Confidence -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Direction -->
+        <div class="flex flex-col items-start gap-1">
+          <span class="text-[10px] text-text-muted uppercase tracking-wide">Direction</span>
+          <div class="flex items-center gap-2">
+            <span class="text-3xl font-bold font-mono px-4 py-2 rounded-xl border ${dirColor}">
+              ${dirArrow} ${ai.direction}
+            </span>
+          </div>
+        </div>
+
+        <!-- Confidence -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-text-muted uppercase tracking-wide">Confidence</span>
+            <span class="text-sm font-bold text-text-primary">${ai.confidence}%</span>
+          </div>
+          <div class="w-full h-2.5 bg-surface-elevated rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700 ${confColor}" style="width:${ai.confidence}%"></div>
+          </div>
+          <span class="text-[10px] text-text-muted">${ai.confidence >= 75 ? 'High conviction' : ai.confidence >= 55 ? 'Moderate conviction' : 'Low conviction — use caution'}</span>
+        </div>
+
+        <!-- Target + Range -->
+        <div class="bg-surface-elevated border border-border rounded-xl p-3 space-y-2">
+          <div class="flex justify-between text-xs">
+            <span class="text-text-muted">Target Price</span>
+            <span class="font-mono font-bold text-text-primary">${pc(ai.targetPrice)}</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-text-muted">Support</span>
+            <span class="font-mono text-gain">${pc(ai.minP)}</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-text-muted">Resistance</span>
+            <span class="font-mono text-loss">${pc(ai.maxP)}</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-text-muted">Volatility</span>
+            <span class="font-mono text-text-secondary">${(ai.volatility * 100).toFixed(2)}%</span>
+          </div>
+          <div class="flex justify-between text-xs">
+            <span class="text-text-muted">Risk Level</span>
+            <span class="font-mono ${ai.risk === 'High' ? 'text-loss' : ai.risk === 'Low' ? 'text-gain' : 'text-warning'}">${ai.risk}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle: Key Factors -->
+      <div class="flex flex-col gap-3">
+        <span class="text-[10px] text-text-muted uppercase tracking-wide">Key Factors</span>
+        <div class="space-y-2">
+          ${ai.factors.map((f, i) => {
+            const bullet = f.pos === true ? 'text-gain' : f.pos === false ? 'text-loss' : 'text-warning'
+            const sign   = f.pos === true ? '+' : f.pos === false ? '–' : '~'
+            return `
+              <div class="flex items-start gap-2 text-sm">
+                <span class="shrink-0 font-bold text-xs mt-0.5 w-4 ${bullet}">${sign}</span>
+                <span class="text-text-secondary leading-snug">${f.text}</span>
+              </div>`
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Right: Summary -->
+      <div class="flex flex-col gap-3">
+        <span class="text-[10px] text-text-muted uppercase tracking-wide">AI Summary</span>
+        <p class="text-sm text-text-secondary leading-relaxed">${ai.summary}</p>
+        <div class="mt-auto pt-3 border-t border-border">
+          <p class="text-[10px] text-text-muted leading-relaxed">
+            This is a simulated AI model for educational purposes only. It is not financial advice.
+            Real investment decisions require comprehensive research.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  `
 }
 
 // ── Travel ────────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import { mountTeacher,     unmountTeacher      } from './pages/teacher.js'
 import { mountResults,     unmountResults      } from './pages/results.js'
 import { mountHistory,     unmountHistory      } from './pages/history.js'
 import { mountHelp,        unmountHelp         } from './pages/help.js'
+import { mountNews,        unmountNews         } from './pages/news.js'
 import { mountLearn,       unmountLearn        } from './pages/learn.js'
 import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMode.js'
 import { startTimeMachine } from './lib/timeMachine.js'
@@ -47,7 +48,7 @@ function getRoute() {
   const hash = window.location.hash || '#dashboard'
   if (hash.startsWith('#stock-'))        return { name: 'stock-detail', symbol: hash.slice(7) }
   if (hash.startsWith('#stocks'))        return { name: 'stocks' }
-  if (hash.startsWith('#portfolio'))     return { name: 'portfolio' }
+  if (hash.startsWith('#portfolio'))     return { name: 'dashboard' }
   if (hash.startsWith('#achievements'))  return { name: 'achievements' }
   if (hash.startsWith('#quests'))        return { name: 'quests' }
   if (hash.startsWith('#leaderboard-project')) return { name: 'leaderboard-project' }
@@ -56,9 +57,10 @@ function getRoute() {
   if (hash.startsWith('#results'))       return { name: 'results' }
   if (hash.startsWith('#settings'))      return { name: 'settings' }
   if (hash.startsWith('#profile'))       return { name: 'profile' }
-  if (hash.startsWith('#history'))       return { name: 'history' }
+  if (hash.startsWith('#history'))       return { name: 'dashboard' }
   if (hash.startsWith('#help'))          return { name: 'help' }
   if (hash.startsWith('#learn'))         return { name: 'learn' }
+  if (hash.startsWith('#news'))          return { name: 'news' }
   if (hash.startsWith('#simulation'))   return { name: 'simulation' }
   return { name: 'dashboard' }
 }
@@ -79,6 +81,7 @@ function unmountCurrent() {
     case 'teacher':      unmountTeacher();      break
     case 'results':      unmountResults();      break
     case 'history':      unmountHistory();      break
+    case 'news':         unmountNews();         break
     case 'help':         unmountHelp();         break
     case 'learn':        unmountLearn();        break
     case 'simulation':  unmountSimulationMode(); break
@@ -108,6 +111,7 @@ function mount(route) {
     case 'teacher':      mountTeacher(main);                           break
     case 'results':      mountResults(main);                           break
     case 'history':      mountHistory(main);                           break
+    case 'news':         mountNews(main);                              break
     case 'help':         mountHelp(main);                              break
     case 'learn':        mountLearn(main);                             break
     case 'simulation':  mountSimulationMode(main);                    break
