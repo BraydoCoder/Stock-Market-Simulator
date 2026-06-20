@@ -233,7 +233,7 @@ function _renderControls() {
               data-action="speed" data-speed="${s}"
               class="w-9 py-1 rounded-lg border text-center transition-colors
                 ${active
-                  ? 'bg-accent-primary text-bg border-accent-primary font-bold cursor-default'
+                  ? 'bg-accent-primary text-bg border-accent-primary font-bold cursor-pointer'
                   : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated cursor-pointer'}">
               ${s}&times;
             </button>`
@@ -469,7 +469,7 @@ function _initChart() {
         pointHoverRadius: 4,
         fill: true,
         backgroundColor: 'rgba(0,212,170,0.07)',
-        tension: 0.3,
+        tension: 0,
         segment: {
           borderColor: ctx => ctx.p1.parsed.y >= ctx.p0.parsed.y ? '#00D4AA' : '#EF4444',
         },
