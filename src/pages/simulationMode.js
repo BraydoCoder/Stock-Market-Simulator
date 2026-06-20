@@ -312,13 +312,13 @@ function _renderControls() {
     </button>`
   }).join('')
 
-  // Stop / Resume button (big red square like the screenshot)
+  // Start / Stop button
   if (isPaused) {
     stopBtn.innerHTML = `
       <button data-action="live"
-        class="w-10 h-10 rounded-xl bg-gain/15 border border-gain/40 text-gain flex items-center justify-center
-               hover:bg-gain/25 transition-colors cursor-pointer text-sm font-bold" title="Resume live">
-        &#9654;
+        class="px-4 h-10 rounded-xl bg-gain/15 border border-gain/40 text-gain flex items-center gap-1.5
+               hover:bg-gain/25 transition-colors cursor-pointer text-sm font-bold" title="Start simulation">
+        &#9654; Start
       </button>`
   } else {
     stopBtn.innerHTML = `
