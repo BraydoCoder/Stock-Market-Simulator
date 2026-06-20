@@ -2,6 +2,7 @@ import { getPrice, fetchFinnhub, getPriceHistory, isMarketOpen } from '../api/pr
 import { getStock, STOCKS } from '../data/stocks.js'
 import { pc, pct, gainClass, relativeTime } from '../utils/format.js'
 import { openTradeModal } from '../components/tradeModal.js'
+import { openStockInfoModal, closeStockInfoModal } from '../components/stockInfoModal.js'
 import { FINNHUB_API_KEY } from '../config.js'
 import { getState, toggleWatchlist, isWatchlisted } from '../state/store.js'
 import Chart from 'chart.js/auto'
@@ -71,6 +72,7 @@ export function unmountStockDetail() {
     window.removeEventListener('prices-updated', priceListener)
     priceListener = null
   }
+  closeStockInfoModal()
   if (chart) { chart.destroy(); chart = null }
   container = null
 }
@@ -136,13 +138,20 @@ function render() {
                       </span>` : ''}
                     </div>
                   </div>
-                  <button id="watchlist-btn"
-                    class="shrink-0 mt-0.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
-                    ${isWatchlisted(currentSymbol)
-                      ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
-                      : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'}">
-                    ${isWatchlisted(currentSymbol) ? '★ Watching' : '☆ Watch'}
-                  </button>
+                  <div class="flex flex-col gap-1.5">
+                    <button id="watchlist-btn"
+                      class="shrink-0 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
+                      ${isWatchlisted(currentSymbol)
+                        ? 'bg-accent-primary/10 border-accent-primary/50 text-accent-primary'
+                        : 'bg-surface-elevated border-border text-text-muted hover:border-accent-primary/40 hover:text-text-primary'}">
+                      ${isWatchlisted(currentSymbol) ? '★ Watching' : '☆ Watch'}
+                    </button>
+                    <button id="more-info-btn"
+                      class="shrink-0 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors
+                        bg-surface-elevated border-border text-text-muted hover:border-accent-secondary/50 hover:text-accent-secondary">
+                      More Info
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -315,6 +324,11 @@ function render() {
       })
       buildChart()
     })
+  })
+
+  // More Info drawer
+  container.querySelector('#more-info-btn')?.addEventListener('click', () => {
+    openStockInfoModal(stock, p.price)
   })
 
   // Watchlist
