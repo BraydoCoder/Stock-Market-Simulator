@@ -27,6 +27,11 @@ const store = new Map()
 // Dividend payout counter — triggers every 100 ticks (~5 min of sim time)
 let dividendTick = 0
 
+// When true, tick() applies a random walk. Enabled only by simulationMode.
+let _simulateWalks = false
+export function enablePriceSimulation()  { _simulateWalks = true  }
+export function disablePriceSimulation() { _simulateWalks = false }
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 export function initPrices() {
@@ -51,11 +56,10 @@ export function initPrices() {
 // finishes. Waits 120s before the first repeat so the batches never overlap.
 export function startFinnhubPolling() {
   if (!FINNHUB_API_KEY) return
-  // Initial fetch takes ~37 × 1.1s ≈ 41s. Wait 120s before the next run so
-  // there's always a clean gap between batches.
+  // Initial fetch takes ~37 × 1.1s ≈ 41s. Wait 60s before the next run.
   setTimeout(function repeat() {
-    fetchAllRealPrices().then(() => setTimeout(repeat, 120_000))
-  }, 120_000)
+    fetchAllRealPrices().then(() => setTimeout(repeat, 60_000))
+  }, 60_000)
 }
 
 // Fetch all 37 stocks one at a time, 1100ms apart.
@@ -80,25 +84,25 @@ export function getAllPrices() { return store }
 
 // ── Tick ──────────────────────────────────────────────────────────────────────
 
-// Called every 3 seconds from main.js.
-// In real mode: no price movement (Finnhub polling handles that).
-// In simulation mode: applies a small random walk to every stock.
+// Called every 3 seconds from the time machine.
+// Random walks only fire in simulation mode (simulationMode page) or when
+// no Finnhub key is present. Otherwise prices come from Finnhub polling.
 export function tick() {
-  // Always simulate price movement so the time machine shows changing prices.
-  // In real mode, Finnhub polling overwrites these with actual quotes every 120 s.
-  STOCKS.forEach(s => {
-    const cur = store.get(s.symbol)
-    if (!cur) return
-    const r         = Math.random()
-    const magnitude = r < 0.10 ? 0.15        // 10%: spike ±15%
-                    : r < 0.30 ? 0.06        // 20%: medium jump ±6%
-                    :            0.015        // 70%: quiet tick ±1.5%
-    const delta   = cur.price * (Math.random() * magnitude * 2 - magnitude)
-    const price   = Math.max(round2(cur.price + delta), 0.01)
-    const chg     = round2(price - s.basePrice)
-    const chgPct  = round2((chg / s.basePrice) * 100)
-    store.set(s.symbol, { price, change: chg, changePct: chgPct, prev: cur.price })
-  })
+  if (!FINNHUB_API_KEY || _simulateWalks) {
+    STOCKS.forEach(s => {
+      const cur = store.get(s.symbol)
+      if (!cur) return
+      const r         = Math.random()
+      const magnitude = r < 0.10 ? 0.15
+                      : r < 0.30 ? 0.06
+                      :            0.015
+      const delta   = cur.price * (Math.random() * magnitude * 2 - magnitude)
+      const price   = Math.max(round2(cur.price + delta), 0.01)
+      const chg     = round2(price - s.basePrice)
+      const chgPct  = round2((chg / s.basePrice) * 100)
+      store.set(s.symbol, { price, change: chg, changePct: chgPct, prev: cur.price })
+    })
+  }
 
   checkPriceAlerts()
   checkOrdersAndSnapshot()

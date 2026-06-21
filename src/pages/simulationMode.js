@@ -1,7 +1,7 @@
 // simulationMode.js — Time Warp page (candlestick redesign)
 import Chart from 'chart.js/auto'
 import { pc } from '../utils/format.js'
-import { getPrice, portfolioValue, getAllPrices } from '../api/prices.js'
+import { getPrice, portfolioValue, getAllPrices, enablePriceSimulation, disablePriceSimulation } from '../api/prices.js'
 import { STOCKS, getStock } from '../data/stocks.js'
 import { FINNHUB_API_KEY } from '../config.js'
 import {
@@ -39,6 +39,7 @@ let _calViewMonth = new Date().getMonth()
 // ── Mount / unmount ───────────────────────────────────────────────────────────
 
 export function mountSimulationMode(el) {
+  enablePriceSimulation()
   container    = el
   _rafPending  = false
   _liveHistory = []
@@ -60,6 +61,7 @@ export function mountSimulationMode(el) {
 }
 
 export function unmountSimulationMode() {
+  disablePriceSimulation()
   _sub?.()
   _sub = null
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
