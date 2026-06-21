@@ -22,7 +22,8 @@ function _play(src) {
   audio.play().catch(() => {})
 }
 
-export const playBuy = () => _play('/sounds/buy.mp3')
+export const playBuy  = () => _play('/sounds/buy.mp3')
+export const playSell = () => _play('/sounds/sell.mp3')
 
 // ── Background music ──────────────────────────────────────────────────────────
 

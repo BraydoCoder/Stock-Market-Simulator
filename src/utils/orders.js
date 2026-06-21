@@ -6,7 +6,7 @@ import { getPrice } from '../api/prices.js'
 import { FEE_RATE } from '../config.js'
 import { toast } from '../components/toast.js'
 import { pc } from './format.js'
-import { playBuy } from './sound.js'
+import { playBuy, playSell } from './sound.js'
 
 export function processOrders() {
   const open = getOpenOrders()
@@ -48,6 +48,7 @@ export function processOrders() {
       sellShares(order.symbol, order.qty)
       recordTx({ type: 'sell', symbol: order.symbol, qty: order.qty, price: execPrice, fee, total: proceeds, orderType: order.type })
       awardXP(Math.max(1, Math.round(subtotal / 200)))
+      playSell()
     }
 
     fillOrder(order.id)
