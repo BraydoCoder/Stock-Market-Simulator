@@ -20,14 +20,14 @@ const STEPS = [
     desc: 'Click here to open the Stock Browser. You can search and filter 37 real stocks across 7 sectors and place trades.',
   },
   {
-    target: '[data-nav="#portfolio"]',
-    title: 'Your Portfolio',
-    desc: 'This is where you track everything you own — current value, gains, losses, and your full transaction history.',
+    target: '[data-nav="#quests"]',
+    title: 'Quests & Achievements',
+    desc: 'Complete quests and earn badges by hitting milestones — your first trade, diversifying across sectors, reaching profit targets, and more.',
   },
   {
-    target: '[data-nav="#achievements"]',
-    title: 'Achievements',
-    desc: 'Earn badges by hitting milestones: your first trade, diversifying across sectors, reaching profit targets, and more.',
+    target: '[data-nav="#learn"]',
+    title: 'Learn',
+    desc: 'New to investing? The Learn tab has bite-sized lessons and quizzes on diversification, risk management, and compound interest.',
   },
   {
     target: '[data-nav="#leaderboard"]',
@@ -109,21 +109,25 @@ function showStep(index) {
   })
 
   // Position tooltip near the target element
-  const target = document.querySelector(step.target)
+  const target = step.target ? document.querySelector(step.target) : null
   if (target) {
     const rect = target.getBoundingClientRect()
-    const tipW = 288, tipH = 220
+    const tipW = 288, tipH = 240
     let top  = rect.bottom + 12
     let left = rect.left
 
-    if (top + tipH > window.innerHeight) top = rect.top - tipH - 12
-    if (left + tipW > window.innerWidth) left = window.innerWidth - tipW - 16
+    // Flip above if it would overflow the bottom
+    if (top + tipH > window.innerHeight - 8) top = rect.top - tipH - 12
+    // Clamp top so it never goes above viewport
+    if (top < 8) top = 8
+    // Clamp left/right
+    if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 16
     if (left < 8) left = 8
 
+    tooltip.style.transform = ''   // clear any centering transform from a fallback step
     tooltip.style.top  = top  + 'px'
     tooltip.style.left = left + 'px'
   } else {
-    // Center fallback
     tooltip.style.top  = '50%'
     tooltip.style.left = '50%'
     tooltip.style.transform = 'translate(-50%, -50%)'
