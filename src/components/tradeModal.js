@@ -8,6 +8,7 @@ import { getStock } from '../data/stocks.js'
 import { pc, pct, shares as fmtShares, gainClass } from '../utils/format.js'
 import { toast } from './toast.js'
 import { showLevelUp } from './levelUp.js'
+import { playBuy } from '../utils/sound.js'
 import { checkAchievements } from '../utils/achievements.js'
 import { FEE_RATE } from '../config.js'
 import { syncPortfolio, syncTransaction } from '../lib/session.js'
@@ -341,6 +342,7 @@ function executeTrade() {
     recordTx(txBuy)
     const leveled = awardXP(Math.max(1, Math.round(subtotal / 100)))
     checkAchievements()
+    playBuy()
     toast(`Bought ${fmtShares(qty)} ${currentSymbol} @ ${pc(execPrice)}`, 'success')
     if (leveled) setTimeout(() => showLevelUp(getState().user.level), 500)
     syncTransaction(txBuy)
