@@ -826,11 +826,15 @@ function render() {
 
         <!-- Add alert form (hidden by default) -->
         <div id="alert-form" class="hidden space-y-3 pt-3 border-t border-border">
-          <div>
+          <div class="relative">
             <label class="text-xs text-text-muted uppercase tracking-wide mb-1.5 block">Stock Symbol</label>
-            <select id="alert-symbol" class="w-full bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary">
-              ${STOCKS.map(s => `<option value="${s.symbol}">${s.symbol} — ${s.name}</option>`).join('')}
-            </select>
+            <input id="alert-symbol-search" type="text" autocomplete="off" placeholder="Search symbol or company..."
+              class="w-full bg-surface-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary
+                     focus:outline-none focus:border-accent-primary transition-colors" />
+            <input id="alert-symbol" type="hidden" value="" />
+            <div id="alert-symbol-dropdown"
+              class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-surface border border-border rounded-xl shadow-xl max-h-48 overflow-y-auto">
+            </div>
           </div>
           <div class="flex gap-2">
             <div class="flex-1">
@@ -946,6 +950,14 @@ function bindEvents() {
   container.querySelector('#add-alert-btn')?.addEventListener('click', () => {
     const form = container.querySelector('#alert-form')
     form?.classList.toggle('hidden')
+    // Reset search when opening
+    if (!form?.classList.contains('hidden')) {
+      const s = container.querySelector('#alert-symbol-search')
+      const h = container.querySelector('#alert-symbol')
+      if (s) s.value = ''
+      if (h) h.value = ''
+      container.querySelector('#alert-symbol-dropdown')?.classList.add('hidden')
+    }
   })
 
   container.querySelectorAll('[data-remove-alert]').forEach(btn => {
@@ -955,12 +967,49 @@ function bindEvents() {
     })
   })
 
+  // Symbol search
+  const alertSearch = container.querySelector('#alert-symbol-search')
+  const alertDrop   = container.querySelector('#alert-symbol-dropdown')
+  const alertHidden = container.querySelector('#alert-symbol')
+
+  function _renderAlertDrop(q) {
+    if (!alertDrop) return
+    const matches = STOCKS.filter(s =>
+      s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+    ).slice(0, 50)
+    if (!matches.length || !q) { alertDrop.classList.add('hidden'); return }
+    alertDrop.innerHTML = matches.map(s => `
+      <button type="button" data-sym="${s.symbol}" data-name="${s.name}"
+        class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-elevated text-left transition-colors">
+        <span class="font-mono font-semibold text-text-primary w-14 shrink-0">${s.symbol}</span>
+        <span class="text-text-muted truncate">${s.name}</span>
+      </button>
+    `).join('')
+    alertDrop.classList.remove('hidden')
+    alertDrop.querySelectorAll('[data-sym]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (alertHidden) alertHidden.value = btn.dataset.sym
+        if (alertSearch) alertSearch.value = `${btn.dataset.sym} — ${btn.dataset.name}`
+        alertDrop.classList.add('hidden')
+      })
+    })
+  }
+
+  alertSearch?.addEventListener('input', () => _renderAlertDrop(alertSearch.value.toLowerCase()))
+  alertSearch?.addEventListener('focus', () => { if (alertSearch.value) _renderAlertDrop(alertSearch.value.toLowerCase()) })
+
+  document.addEventListener('click', (e) => {
+    if (alertDrop && !alertDrop.contains(e.target) && e.target !== alertSearch) {
+      alertDrop.classList.add('hidden')
+    }
+  }, { capture: true })
+
   container.querySelector('#save-alert-btn')?.addEventListener('click', () => {
     const symbol    = container.querySelector('#alert-symbol')?.value
     const direction = container.querySelector('#alert-direction')?.value
     const threshold = parseFloat(container.querySelector('#alert-threshold')?.value)
     if (!symbol || !direction || isNaN(threshold) || threshold <= 0) {
-      toast('Please fill in all alert fields', 'error'); return
+      toast('Please select a stock and fill in all alert fields', 'error'); return
     }
     addPriceAlert({ symbol, direction, threshold })
     toast(`Alert set: ${symbol} ${direction} ${pc(threshold)}`, 'success')
