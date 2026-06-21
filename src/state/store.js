@@ -17,7 +17,7 @@ const DEFAULT = {
   netWorthHistory: [], // [{ ts, value }] snapshots for the net worth chart
   notifications: [],  // [{ id, type, message, ts, read }]
   watchlist: [],      // array of stock symbols
-  settings: { tradeInsights: true, soundEnabled: true, musicEnabled: true, musicVolume: 50, sfxVolume: 70, tutorialDone: false, theme: 'dark', language: 'en' },
+  settings: { tradeInsights: true, soundEnabled: true, musicEnabled: true, musicVolume: 50, sfxVolume: 70, tutorialDone: false, theme: 'dark', language: 'en', settingsVersion: 1 },
 }
 
 export const XP_THRESHOLDS = [
@@ -38,11 +38,22 @@ function load() {
     const raw = localStorage.getItem(KEY)
     if (!raw) return structuredClone(DEFAULT)
     const saved = JSON.parse(raw)
+    const settings = { ...DEFAULT.settings, ...saved.settings }
+
+    // One-time migration: audio was broken before settingsVersion 1.
+    // Force both sound flags on so users who had the broken defaults
+    // automatically get working audio on next load.
+    if (!settings.settingsVersion) {
+      settings.soundEnabled = true
+      settings.musicEnabled = true
+      settings.settingsVersion = 1
+    }
+
     return {
       ...DEFAULT,
       ...saved,
       user:         { ...DEFAULT.user,     ...saved.user },
-      settings:     { ...DEFAULT.settings, ...saved.settings },
+      settings,
       achievements: saved.achievements  ?? [],
       orders:       saved.orders        ?? [],
       priceAlerts:  saved.priceAlerts   ?? [],
