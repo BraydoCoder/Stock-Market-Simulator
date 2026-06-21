@@ -1,4 +1,4 @@
-import { getState, subscribe, xpProgress, markNotificationsRead, getUnreadCount } from '../state/store.js'
+import { getState, subscribe, xpProgress, markNotificationsRead, getUnreadCount, updateSettings } from '../state/store.js'
 import { isMarketOpen } from '../api/prices.js'
 import { pc, relativeTime } from '../utils/format.js'
 import { t } from '../i18n/index.js'
@@ -189,9 +189,7 @@ function notifIcon(type) {
 function bindNavEvents() {
   // Audio toggle
   document.getElementById('nav-audio-toggle')?.addEventListener('click', () => {
-    const { updateSettings, getState: gs } = window.__store__ ?? {}
-    if (!updateSettings) return
-    const enabled = !gs().settings.soundEnabled
+    const enabled = !getState().settings.soundEnabled
     updateSettings({ soundEnabled: enabled })
     const btn = document.getElementById('nav-audio-toggle')
     if (btn) btn.textContent = enabled ? 'SFX' : 'MUT'

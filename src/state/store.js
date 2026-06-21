@@ -17,7 +17,7 @@ const DEFAULT = {
   netWorthHistory: [], // [{ ts, value }] snapshots for the net worth chart
   notifications: [],  // [{ id, type, message, ts, read }]
   watchlist: [],      // array of stock symbols
-  settings: { tradeInsights: true, soundEnabled: false, musicEnabled: true, musicVolume: 50, sfxVolume: 70, tutorialDone: false, theme: 'dark', language: 'en' },
+  settings: { tradeInsights: true, soundEnabled: true, musicEnabled: true, musicVolume: 50, sfxVolume: 70, tutorialDone: false, theme: 'dark', language: 'en' },
 }
 
 export const XP_THRESHOLDS = [
