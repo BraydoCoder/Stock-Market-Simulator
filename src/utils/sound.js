@@ -27,6 +27,7 @@ export const playBuy = () => _play('/sounds/buy.mp3')
 // ── Background music ──────────────────────────────────────────────────────────
 
 let _bg = null
+let _pendingStart = false
 
 function _getBg() {
   if (!_bg) {
@@ -37,31 +38,42 @@ function _getBg() {
   return _bg
 }
 
+// Called once on app boot. If musicEnabled, tries to play immediately;
+// if the browser blocks autoplay, queues it for the first user interaction.
 export function initBgMusic() {
   const { musicEnabled, musicVolume } = getState().settings
-  const audio = _getBg()
-  audio.volume = (musicVolume ?? 50) / 100
   if (!musicEnabled) return
 
-  audio.play().catch(() => {
-    // Autoplay blocked by browser — resume on first user interaction
+  const audio = _getBg()
+  audio.volume = (musicVolume ?? 50) / 100
+
+  audio.play().then(() => {
+    _pendingStart = false
+  }).catch(() => {
+    // Autoplay blocked — start on first interaction
+    _pendingStart = true
     const onInteract = () => {
-      if (getState().settings.musicEnabled) _getBg().play().catch(() => {})
-      document.removeEventListener('click', onInteract)
+      if (_pendingStart && getState().settings.musicEnabled) {
+        _getBg().play().catch(() => {})
+        _pendingStart = false
+      }
+      document.removeEventListener('click',   onInteract)
       document.removeEventListener('keydown', onInteract)
     }
-    document.addEventListener('click',   onInteract, { once: true })
-    document.addEventListener('keydown', onInteract, { once: true })
+    document.addEventListener('click',   onInteract)
+    document.addEventListener('keydown', onInteract)
   })
 }
 
 export function startBgMusic() {
+  _pendingStart = false
   const audio = _getBg()
   audio.volume = (getState().settings.musicVolume ?? 50) / 100
   audio.play().catch(() => {})
 }
 
 export function stopBgMusic() {
+  _pendingStart = false
   if (_bg) { _bg.pause(); _bg.currentTime = 0 }
 }
 

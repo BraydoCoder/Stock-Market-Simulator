@@ -955,9 +955,9 @@ function bindEvents() {
   // Audio — music
   container.querySelector('#music-toggle')?.addEventListener('click', () => {
     const enabled = !getState().settings.musicEnabled
-    updateSettings({ musicEnabled: enabled })
     if (enabled) startBgMusic()
     else stopBgMusic()
+    updateSettings({ musicEnabled: enabled })
   })
 
   const musicSlider = container.querySelector('#music-volume')
