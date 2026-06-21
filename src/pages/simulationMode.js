@@ -41,6 +41,10 @@ let _calViewMonth = new Date().getMonth()
 
 export function mountSimulationMode(el) {
   enablePriceSimulation()
+  // Pause on entry so the simulation doesn't start automatically
+  const { mode } = getTimeMachineState()
+  if (mode === 'live') pauseTime()
+
   container    = el
   _rafPending  = false
   _liveHistory = []
@@ -63,6 +67,8 @@ export function mountSimulationMode(el) {
 
 export function unmountSimulationMode() {
   disablePriceSimulation()
+  // Always resume ticking when leaving so orders/alerts still process
+  returnToLive()
   _sub?.()
   _sub = null
   if (_pricesHandler) { window.removeEventListener('prices-updated', _pricesHandler); _pricesHandler = null }
@@ -341,34 +347,30 @@ function _renderControls() {
     endInput.value = _isoDate(d)
   }
 
-  // Speed pills
-  speedBar.innerHTML = speeds.map(s => {
+  // Speed pills — clicking one starts/changes speed; pause button appears when live
+  const pillsHtml = speeds.map(s => {
     const active = speed === s && isLive
     return `<button data-action="speed" data-speed="${s}"
-      class="px-2.5 py-1 rounded-lg border text-xs transition-colors cursor-pointer
+      class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer
         ${active
           ? 'bg-accent-primary text-bg border-accent-primary font-bold'
-          : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}">
+          : isPaused
+            ? 'border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated'
+            : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}">
       ${s}&times;
     </button>`
   }).join('')
 
-  // Start / Stop button
-  if (isPaused) {
-    stopBtn.innerHTML = `
-      <button data-action="live"
-        class="px-4 h-10 rounded-xl bg-gain/15 border border-gain/40 text-gain flex items-center gap-1.5
-               hover:bg-gain/25 transition-colors cursor-pointer text-sm font-bold" title="Start simulation">
-        &#9654; Start
+  const pauseHtml = isLive
+    ? `<button data-action="pause"
+        class="px-3 py-1.5 rounded-lg bg-loss/15 border border-loss/40 text-loss text-xs font-semibold
+               hover:bg-loss/25 transition-colors cursor-pointer" title="Pause">
+        &#9646;&#9646; Pause
       </button>`
-  } else {
-    stopBtn.innerHTML = `
-      <button data-action="pause"
-        class="w-10 h-10 rounded-xl bg-loss flex items-center justify-center
-               hover:bg-loss/80 transition-colors cursor-pointer" title="Pause simulation">
-        <span class="w-3 h-3 bg-white rounded-sm"></span>
-      </button>`
-  }
+    : `<span class="text-[10px] text-text-muted italic pl-1">Click a speed to start</span>`
+
+  speedBar.innerHTML = pillsHtml + pauseHtml
+  stopBtn.innerHTML  = ''
 }
 
 // ── Chart initialisation ──────────────────────────────────────────────────────
