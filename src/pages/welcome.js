@@ -55,9 +55,21 @@ function render(onStart, onGuest) {
 
           <!-- Feature cards -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-20 max-w-2xl w-full text-left">
-            ${card('SIM', 'Live Market Simulation', 'Prices move in real time. Buy low, sell high, and watch your portfolio grow.')}
-            ${card('XP', 'Compete & Earn XP', 'Climb the class leaderboard, unlock achievements, and level up your rank.')}
-            ${card('EDU', 'Learn While You Play', 'Guided lessons on diversification, risk management, and compound interest.')}
+            ${card('SIM', {
+                bar:   'bg-gain',
+                wrap:  'bg-gain/5 border-gain/25',
+                badge: 'bg-gain/15 text-gain',
+              }, 'Live Market Simulation', 'Prices move in real time. Buy low, sell high, and watch your portfolio grow.')}
+            ${card('XP', {
+                bar:   'bg-accent-primary',
+                wrap:  'bg-accent-primary/5 border-accent-primary/25',
+                badge: 'bg-accent-primary/15 text-accent-primary',
+              }, 'Compete & Earn XP', 'Climb the class leaderboard, unlock achievements, and level up your rank.')}
+            ${card('EDU', {
+                bar:   'bg-warning',
+                wrap:  'bg-warning/5 border-warning/25',
+                badge: 'bg-warning/15 text-warning',
+              }, 'Learn While You Play', 'Guided lessons on diversification, risk management, and compound interest.')}
           </div>
 
         </div>
@@ -75,10 +87,13 @@ function render(onStart, onGuest) {
   container.querySelector('#welcome-guest')?.addEventListener('click', () => onGuest?.())
 }
 
-function card(icon, title, desc) {
+function card(tag, cls, title, desc) {
   return `
-    <div class="bg-surface border border-border rounded-2xl p-5">
-      <div class="text-3xl mb-3">${icon}</div>
+    <div class="relative overflow-hidden rounded-2xl border p-5 ${cls.wrap}">
+      <div class="absolute top-0 left-0 right-0 h-[3px] ${cls.bar}"></div>
+      <div class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wider mb-3 ${cls.badge}">
+        ${tag}
+      </div>
       <div class="font-semibold text-text-primary text-sm mb-1">${title}</div>
       <div class="text-xs text-text-muted leading-relaxed">${desc}</div>
     </div>
