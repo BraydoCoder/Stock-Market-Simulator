@@ -68,10 +68,10 @@ export function startFinnhubPolling() {
 // request completes.
 async function fetchAllRealPrices() {
   for (const s of STOCKS) {
-    await fetchFinnhub(s.symbol)
+    const result = await fetchFinnhub(s.symbol)
+    if (result) window.dispatchEvent(new Event('prices-updated'))
     await delay(1100)
   }
-  window.dispatchEvent(new Event('prices-updated'))
 }
 
 // ── Getters ───────────────────────────────────────────────────────────────────
