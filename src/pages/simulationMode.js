@@ -16,6 +16,7 @@ import {
   getDisplayDate,
 } from '../lib/timeMachine.js'
 import { getState } from '../state/store.js'
+import { openTradeModal } from '../components/tradeModal.js'
 
 let container      = null
 let _sub           = null
@@ -293,11 +294,23 @@ function _renderHeader() {
       AI &mdash; ${sent.label} ${sent.pct}%
     </span>
 
-    <div class="ml-auto flex items-baseline gap-2">
-      <span class="font-mono font-bold text-text-primary text-xl">${pc(price)}</span>
-      <span class="text-sm font-bold ${up ? 'text-gain' : 'text-loss'}">
-        ${up ? '▲' : '▼'} ${up ? '+' : ''}${deltaPct.toFixed(2)}%
-      </span>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-baseline gap-2">
+        <span class="font-mono font-bold text-text-primary text-xl">${pc(price)}</span>
+        <span class="text-sm font-bold ${up ? 'text-gain' : 'text-loss'}">
+          ${up ? '▲' : '▼'} ${up ? '+' : ''}${deltaPct.toFixed(2)}%
+        </span>
+      </div>
+      <button data-action="trade-buy"
+        class="px-3 py-1.5 rounded-lg bg-gain/15 border border-gain/40 text-gain text-xs font-bold
+               hover:bg-gain/25 transition-colors cursor-pointer">
+        Buy
+      </button>
+      <button data-action="trade-sell"
+        class="px-3 py-1.5 rounded-lg bg-loss/15 border border-loss/40 text-loss text-xs font-bold
+               hover:bg-loss/25 transition-colors cursor-pointer">
+        Sell
+      </button>
     </div>
   `
 }
@@ -450,9 +463,11 @@ function _handleClick(e) {
     case 'live':       returnToLive();          break
     case 'step-back':  stepBack();              break
     case 'step-fwd':   stepForward();           break
-    case 'travel-go':  _doTravel();                  break
-    case 'toggle-ai':  _toggleAI();                  break
+    case 'travel-go':  _doTravel();                      break
+    case 'toggle-ai':  _toggleAI();                      break
     case 'open-cal':   _openCal(btn.dataset.calFor, btn); break
+    case 'trade-buy':  openTradeModal(_selectedSym, 'buy');  break
+    case 'trade-sell': openTradeModal(_selectedSym, 'sell'); break
   }
 
   // Calendar navigation / date pick
