@@ -275,6 +275,7 @@ async function init() {
       unmountAuth()
       currentRoute = null
       mount(getRoute())
+      if (!getState().settings.tutorialDone) setTimeout(startTutorial, 400)
     }, { once: true })
   }
 
@@ -297,6 +298,7 @@ async function init() {
       currentRoute = null
       renderNavbar()
       mount(getRoute())
+      if (!getState().settings.tutorialDone) setTimeout(startTutorial, 400)
     })
   }
 
