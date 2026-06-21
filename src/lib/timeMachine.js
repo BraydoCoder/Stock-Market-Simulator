@@ -11,7 +11,7 @@ import { getState } from '../state/store.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SPEEDS       = [1, 5, 25]
+const SPEEDS       = [1, 5, 25, 100]
 const BASE_MS      = 3000      // ms per tick at 1×
 const MAX_HISTORY  = 300       // ~15 min of 1× history (one snapshot per tick)
 const MAX_TRAVEL   = Infinity  // no cap — user can travel to any future date
@@ -141,7 +141,7 @@ export function returnToLive() {
  * Future dates → batch-simulate ticks forward (capped at MAX_TRAVEL days).
  * Returns an error string if the travel isn't possible, null on success.
  */
-export async function travelToDate(year, month, day) {
+export async function travelToDate(year, month, day, { pauseOnArrival = false } = {}) {
   const target = new Date(year, month - 1, day)
   target.setHours(12, 0, 0, 0)
 
@@ -185,10 +185,16 @@ export async function travelToDate(year, month, day) {
     }
   }
 
-  _mode    = 'live'
-  _histIdx = null
-  _scheduleTick()
-  _emit()
+  if (pauseOnArrival) {
+    _mode    = 'paused'
+    _histIdx = history.length - 1
+    _emit()
+  } else {
+    _mode    = 'live'
+    _histIdx = null
+    _scheduleTick()
+    _emit()
+  }
   return null
 }
 

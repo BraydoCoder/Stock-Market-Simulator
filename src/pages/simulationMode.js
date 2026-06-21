@@ -1,7 +1,7 @@
 // simulationMode.js — Time Warp page (candlestick redesign)
 import Chart from 'chart.js/auto'
 import { pc } from '../utils/format.js'
-import { getPrice } from '../api/prices.js'
+import { getPrice, portfolioValue, getAllPrices } from '../api/prices.js'
 import { STOCKS, getStock } from '../data/stocks.js'
 import { FINNHUB_API_KEY } from '../config.js'
 import {
@@ -13,7 +13,9 @@ import {
   stepForward,
   returnToLive,
   travelToDate,
+  getDisplayDate,
 } from '../lib/timeMachine.js'
+import { getState } from '../state/store.js'
 
 let container      = null
 let _sub           = null
@@ -28,6 +30,9 @@ let _aiPanelOpen   = false
 
 // Calendar picker state
 let _calTargetId  = null   // 'sim-start-date' | 'sim-end-date' | null
+
+// Time warp summary state
+let _warpSnap = null   // { netWorth, date, txCount, dividends } captured before travel
 let _calViewYear  = new Date().getFullYear()
 let _calViewMonth = new Date().getMonth()
 
@@ -61,6 +66,8 @@ export function unmountSimulationMode() {
   document.removeEventListener('click', _handleOutsideClick)
   if (_chart) { _chart.destroy(); _chart = null }
   _calTargetId = null
+  _warpSnap    = null
+  document.getElementById('warp-summary')?.remove()
   container = null
 }
 
@@ -867,9 +874,127 @@ async function _doTravel() {
   const errEl = document.getElementById('sim-travel-error')
   if (errEl) { errEl.textContent = ''; errEl.classList.add('hidden') }
 
-  const err = await travelToDate(y, m, d)
+  // Snapshot state before travel so we can diff it after
+  const state0 = getState()
+  _warpSnap = {
+    netWorth:  state0.user.balance + portfolioValue(state0.holdings),
+    date:      new Date(getDisplayDate()),
+    txCount:   state0.transactions.length,
+    dividends: state0.transactions.filter(t => t.type === 'dividend').reduce((s, t) => s + (t.amount ?? 0), 0),
+  }
+
+  const err = await travelToDate(y, m, d, { pauseOnArrival: true })
   if (err && errEl) {
     errEl.textContent = err
     errEl.classList.remove('hidden')
+    _warpSnap = null
+    return
   }
+
+  _showWarpSummary(new Date(y, m - 1, d))
+}
+
+function _showWarpSummary(endDate) {
+  if (!_warpSnap) return
+  const existing = document.getElementById('warp-summary')
+  if (existing) existing.remove()
+
+  const state     = getState()
+  const endWorth  = state.user.balance + portfolioValue(state.holdings)
+  const gain      = endWorth - _warpSnap.netWorth
+  const gainPct   = _warpSnap.netWorth > 0 ? (gain / _warpSnap.netWorth) * 100 : 0
+  const gainCls   = gain >= 0 ? 'text-gain' : 'text-loss'
+  const newTrades = state.transactions.length - _warpSnap.txCount
+  const newDivs   = state.transactions.filter(t => t.type === 'dividend').reduce((s, t) => s + (t.amount ?? 0), 0) - _warpSnap.dividends
+
+  const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+
+  // Holdings performance
+  const prices   = getAllPrices()
+  const holdings = Object.entries(state.holdings)
+  const holdRows = holdings.length ? holdings.map(([sym, h]) => {
+    const p    = prices.get(sym)
+    const pnl  = p ? (p.price - h.avgCost) / h.avgCost * 100 : 0
+    const cls  = pnl >= 0 ? 'text-gain' : 'text-loss'
+    return `<div class="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+      <span class="font-mono text-sm font-semibold text-text-primary">${sym}</span>
+      <span class="text-xs ${cls}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)}% on cost</span>
+    </div>`
+  }).join('') : `<div class="text-xs text-text-muted">No open positions</div>`
+
+  const el = document.createElement('div')
+  el.id = 'warp-summary'
+  el.className = 'fixed inset-0 z-[300] flex items-center justify-center p-4'
+  el.innerHTML = `
+    <div class="absolute inset-0 bg-black/60" id="warp-summary-backdrop"></div>
+    <div class="relative bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="text-[10px] text-accent-secondary uppercase tracking-widest font-semibold mb-1">Time Warp Complete</div>
+          <div class="text-lg font-bold text-text-primary">Simulation Summary</div>
+          <div class="text-xs text-text-muted mt-0.5">${fmt(_warpSnap.date)} &rarr; ${fmt(endDate)}</div>
+        </div>
+        <button id="warp-close" class="text-text-muted hover:text-text-primary text-xl leading-none cursor-pointer">&#x2715;</button>
+      </div>
+
+      <!-- Portfolio change -->
+      <div class="bg-surface-elevated rounded-xl p-4 space-y-2">
+        <div class="text-xs text-text-muted uppercase tracking-wide font-medium mb-3">Portfolio Performance</div>
+        <div class="flex justify-between text-sm">
+          <span class="text-text-muted">Starting value</span>
+          <span class="font-mono text-text-primary">${pc(_warpSnap.netWorth)}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-text-muted">Ending value</span>
+          <span class="font-mono text-text-primary">${pc(endWorth)}</span>
+        </div>
+        <div class="flex justify-between text-sm border-t border-border pt-2 mt-2">
+          <span class="text-text-muted">Net change</span>
+          <span class="font-mono font-bold ${gainCls}">${gain >= 0 ? '+' : ''}${pc(gain)} (${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%)</span>
+        </div>
+      </div>
+
+      <!-- Holdings -->
+      ${holdings.length ? `
+      <div>
+        <div class="text-xs text-text-muted uppercase tracking-wide font-medium mb-2">Open Positions</div>
+        <div class="bg-surface-elevated rounded-xl px-4 py-2">${holdRows}</div>
+      </div>` : ''}
+
+      <!-- Stats -->
+      <div class="flex gap-3">
+        <div class="flex-1 bg-surface-elevated rounded-xl p-3 text-center">
+          <div class="text-lg font-bold text-text-primary">${newTrades}</div>
+          <div class="text-[10px] text-text-muted uppercase tracking-wide">Trades Made</div>
+        </div>
+        ${newDivs > 0 ? `
+        <div class="flex-1 bg-surface-elevated rounded-xl p-3 text-center">
+          <div class="text-lg font-bold text-gain">${pc(newDivs)}</div>
+          <div class="text-[10px] text-text-muted uppercase tracking-wide">Dividends</div>
+        </div>` : ''}
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2 pt-1">
+        <button id="warp-keep-trading"
+          class="flex-1 py-2.5 rounded-xl bg-accent-primary text-bg text-sm font-bold hover:bg-accent-primary/90 transition-colors cursor-pointer">
+          Keep Trading
+        </button>
+        <button id="warp-return-live"
+          class="flex-1 py-2.5 rounded-xl border border-border text-text-secondary text-sm hover:bg-surface-elevated transition-colors cursor-pointer">
+          Return to Live
+        </button>
+      </div>
+
+    </div>
+  `
+
+  document.body.appendChild(el)
+
+  const remove = () => el.remove()
+  el.querySelector('#warp-close')?.addEventListener('click', remove)
+  el.querySelector('#warp-summary-backdrop')?.addEventListener('click', remove)
+  el.querySelector('#warp-keep-trading')?.addEventListener('click', remove)
+  el.querySelector('#warp-return-live')?.addEventListener('click', () => { remove(); returnToLive() })
 }
