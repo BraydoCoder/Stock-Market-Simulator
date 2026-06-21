@@ -32,6 +32,7 @@ import { mountSimulationMode, unmountSimulationMode } from './pages/simulationMo
 import { mountHeatMap,        unmountHeatMap        } from './pages/heatMap.js'
 import { startTimeMachine } from './lib/timeMachine.js'
 import { startTutorial } from './components/tutorial.js'
+import { initBgMusic } from './utils/sound.js'
 import { initTicker } from './components/ticker.js'
 import { checkAchievements } from './utils/achievements.js'
 import { supabase } from './lib/supabase.js'
@@ -222,6 +223,7 @@ function bootApp() {
 
   initNavbar()
   initTicker()
+  initBgMusic()
 
   subscribe(() => checkAchievements())
 

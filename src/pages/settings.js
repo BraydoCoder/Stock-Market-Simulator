@@ -5,6 +5,7 @@ import { STOCKS } from '../data/stocks.js'
 import { pc } from '../utils/format.js'
 import { toast } from '../components/toast.js'
 import { startTutorial } from '../components/tutorial.js'
+import { startBgMusic, stopBgMusic, setMusicVolume } from '../utils/sound.js'
 import { supabase } from '../lib/supabase.js'
 import { t, setLanguage } from '../i18n/index.js'
 import { renderNavbar } from '../components/navbar.js'
@@ -783,6 +784,22 @@ function render() {
         <h2 class="font-semibold text-text-primary">Audio</h2>
 
         <div class="flex items-center justify-between">
+          <span class="text-sm text-text-secondary">Background Music</span>
+          <button id="music-toggle" class="relative w-11 h-6 rounded-full transition-colors ${s.musicEnabled ? 'bg-accent-primary' : 'bg-surface-elevated border border-border'}">
+            <div class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${s.musicEnabled ? 'translate-x-5' : 'translate-x-0.5'}"></div>
+          </button>
+        </div>
+
+        <div>
+          <label class="text-xs text-text-muted uppercase tracking-wide mb-1.5 flex justify-between">
+            <span>Music Volume</span>
+            <span id="music-vol-label">${s.musicVolume ?? 50}%</span>
+          </label>
+          <input id="music-volume" type="range" min="0" max="100" value="${s.musicVolume ?? 50}"
+            class="w-full accent-accent-primary" />
+        </div>
+
+        <div class="flex items-center justify-between">
           <span class="text-sm text-text-secondary">Sound Effects</span>
           <button id="sfx-toggle" class="relative w-11 h-6 rounded-full transition-colors ${s.soundEnabled ? 'bg-accent-primary' : 'bg-surface-elevated border border-border'}">
             <div class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${s.soundEnabled ? 'translate-x-5' : 'translate-x-0.5'}"></div>
@@ -935,7 +952,23 @@ function bindEvents() {
     }
   })
 
-  // Audio
+  // Audio — music
+  container.querySelector('#music-toggle')?.addEventListener('click', () => {
+    const enabled = !getState().settings.musicEnabled
+    updateSettings({ musicEnabled: enabled })
+    if (enabled) startBgMusic()
+    else stopBgMusic()
+  })
+
+  const musicSlider = container.querySelector('#music-volume')
+  musicSlider?.addEventListener('input', () => {
+    const vol = Number(musicSlider.value)
+    container.querySelector('#music-vol-label').textContent = vol + '%'
+    updateSettings({ musicVolume: vol })
+    setMusicVolume(vol)
+  })
+
+  // Audio — SFX
   container.querySelector('#sfx-toggle')?.addEventListener('click', () => {
     updateSettings({ soundEnabled: !getState().settings.soundEnabled })
   })
