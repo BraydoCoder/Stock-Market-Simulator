@@ -1,19 +1,13 @@
 // prices.js — stock price data layer
 //
-// Two modes depending on whether VITE_FINNHUB_API_KEY is set in .env.local:
+// Real mode (VITE_FINNHUB_API_KEY set):
+//   - Seeds UI instantly with base prices, then batch-fetches all stocks
+//     from Yahoo Finance (via /yf proxy in dev, /api/yf in production).
+//   - ~1077 stocks fetched in ~6 batches of 200 — completes in seconds.
+//   - Refreshes every 60s. Finnhub is kept for individual stock detail pages.
 //
-//   Real mode  (API key present):
-//     - initPrices() seeds UI instantly with base prices, then fetches all 37
-//       stocks from Finnhub staggered at 1100ms each (~33 req/min, well under
-//       the 60 req/min free-tier limit). Real prices trickle in over ~41s.
-//     - startFinnhubPolling() re-fetches all stocks every 120s (after the
-//       previous batch completes), so batches never overlap.
-//     - tick() does NOT apply a random walk — it only checks orders/alerts
-//       and fires 'prices-updated' so the UI can refresh timestamps.
-//
-//   Simulation mode (no API key):
-//     - tick() applies ±0.2% random walk every 3 seconds and fires
-//       'prices-updated'.  No network calls are made.
+// Simulation mode (no API key):
+//   - tick() applies a random walk every 3 seconds.
 
 import { STOCKS } from '../data/stocks.js'
 import { FINNHUB_API_KEY } from '../config.js'
@@ -48,29 +42,51 @@ export function initPrices() {
     })
   })
 
-  // If an API key is present, immediately replace mock prices with real ones.
+  // Immediately replace mock prices with real batch data.
   if (FINNHUB_API_KEY) fetchAllRealPrices()
 }
 
-// Starts a polling loop that re-fetches all prices after the initial batch
-// finishes. Waits 120s before the first repeat so the batches never overlap.
+// Polling loop — re-fetches every 60s.
 export function startFinnhubPolling() {
   if (!FINNHUB_API_KEY) return
-  // Initial fetch takes ~37 × 1.1s ≈ 41s. Wait 60s before the next run.
   setTimeout(function repeat() {
     fetchAllRealPrices().then(() => setTimeout(repeat, 60_000))
   }, 60_000)
 }
 
-// Fetch all 37 stocks one at a time, 1100ms apart.
-// 37 × 1.1s = 40.7s total ≈ 33 req/min — well under the 60 req/min free limit.
-// Mock prices are shown instantly on load; real prices trickle in as each
-// request completes.
+// Batch-fetch all stocks from Yahoo Finance in chunks of 200.
+// Completes in a few seconds regardless of stock count.
+const YF_BATCH = 200
 async function fetchAllRealPrices() {
-  for (const s of STOCKS) {
-    const result = await fetchFinnhub(s.symbol)
-    if (result) window.dispatchEvent(new Event('prices-updated'))
-    await delay(1100)
+  const syms = STOCKS.map(s => s.symbol)
+  for (let i = 0; i < syms.length; i += YF_BATCH) {
+    const batch = syms.slice(i, i + YF_BATCH).join(',')
+    await fetchYahooBatch(batch)
+  }
+}
+
+async function fetchYahooBatch(symbols) {
+  // /yf is proxied to Yahoo Finance by Vite in dev (vite.config.js).
+  // In production, /api/yf is a Vercel edge function that does the same.
+  const base = import.meta.env.DEV ? '/yf' : '/api/yf'
+  const url = `${base}/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketPreviousClose`
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return
+    const json = await res.json()
+    const results = json?.quoteResponse?.result ?? []
+    results.forEach(q => {
+      if (!q.regularMarketPrice) return
+      store.set(q.symbol, {
+        price:     round2(q.regularMarketPrice),
+        change:    round2(q.regularMarketChange ?? 0),
+        changePct: round2(q.regularMarketChangePercent ?? 0),
+        prev:      round2(q.regularMarketPreviousClose ?? q.regularMarketPrice),
+      })
+    })
+    window.dispatchEvent(new Event('prices-updated'))
+  } catch {
+    // silently fall back to seeded prices
   }
 }
 
